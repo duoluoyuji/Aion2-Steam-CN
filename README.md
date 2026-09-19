@@ -1,13 +1,6 @@
 ﻿# AION 2 (Steam Playtest) Simplified Chinese Localization Patch
 # 《永恒之塔2》(Steam 国际服测试版) 简体中文一键汉化补丁
 
-<p align="center">
-  <b>Author / 作者:</b> 哔哩哔哩 @吃素的佩奇<br>
-  <b>Bilibili Space / B站个人主页:</b> <a href="https://space.bilibili.com/3379443">https://space.bilibili.com/3379443</a><br>
-  <b>Target AppID / 目标游戏 ID:</b> 4972320 (AION 2 Playtest)<br>
-  <b>Engine / 引擎:</b> Unreal Engine 5 (UE5)
-</p>
-
 ---
 
 ## 🇨🇳 中文说明 (Chinese)
