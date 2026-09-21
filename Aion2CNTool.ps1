@@ -1,6 +1,6 @@
 ﻿# -*- coding: utf-8 -*-
-# AION 2 Steam 测试版一键汉化与还原工具
-# 作者: B站@吃素的佩奇 
+# AION 2 (Steam / PURPLE 国际服) 简体中文一键汉化与还原工具
+# 作者: B站@吃素的佩奇
 # 开源主页: https://github.com/duoluoyuji/Aion2-Steam-CN
 
 param(
@@ -15,16 +15,16 @@ Add-Type -AssemblyName System.Drawing
 
 $ToolDir        = $PSScriptRoot
 $ZhDir          = Join-Path $ToolDir 'zh'
-$CurrentVersion = '1.0.0'
-$AppId          = '4972320'
+$CurrentVersion = '1.0.1'
+# 3393110 为 Steam 正式服 AppID，4972320 为 Steam Playtest 测试服 AppID
+$AppIds         = @('3393110', '4972320')
 $RemoteVersionUrl   = 'https://raw.githubusercontent.com/duoluoyuji/Aion2-Steam-CN/main/version.json'
 $FallbackVersionUrl = 'https://ghp.ci/https://raw.githubusercontent.com/duoluoyuji/Aion2-Steam-CN/main/version.json'
 
 # ==================== 控制台作者署名横幅 ====================
 function Show-Banner {
     Write-Host "========================================================================" -ForegroundColor Magenta
-    Write-Host "      AION 2 (Steam 国际服测试版) 简体中文汉化工具 v$CurrentVersion" -ForegroundColor Cyan
-    Write-Host "      作者/维护: 哔哩哔哩 @吃素的佩奇 " -ForegroundColor Yellow
+    Write-Host "      AION 2 (Steam / PURPLE 国际服) 简体中文汉化工具 v$CurrentVersion" -ForegroundColor Cyan
     Write-Host "      开源主页: https://github.com/duoluoyuji/Aion2-Steam-CN" -ForegroundColor Gray
     Write-Host "      【声明】本工具完全免费分享，仅供交流学习，严禁倒卖牟利！" -ForegroundColor Red
     Write-Host "========================================================================" -ForegroundColor Magenta
@@ -64,18 +64,19 @@ function Check-Update {
                 [System.Diagnostics.Process]::Start($url)
             }
         } else {
-            Write-Host "-> 当前已是最新测试版本 (v$CurrentVersion)。" -ForegroundColor DarkGray
+            Write-Host "-> 当前已是最新国际服版本 (v$CurrentVersion)。" -ForegroundColor DarkGray
         }
     } else {
         Write-Host "-> 网络检测超时，使用离线模式继续运行。" -ForegroundColor DarkGray
     }
 }
 
-# ==================== 自动扫描全盘 Steam 游戏库 ====================
+# ==================== 智能全自动多端扫描 (Steam / PURPLE 国际服 / 正式服 + 测试服) ====================
 function Find-GameRoot {
     $roots = @()
     $fixedDrives = (Get-PSDrive -PSProvider FileSystem | Where-Object { $_.Free -ne $null -and $_.Root }).Root
     
+    # 1. 搜寻 Steam 游戏库
     foreach ($d in $fixedDrives) {
         $candidates = @(
             (Join-Path $d 'SteamLibrary\steamapps'),
@@ -99,21 +100,23 @@ function Find-GameRoot {
 
     $roots = $roots | Select-Object -Unique
 
-    # 优先匹配 appmanifest
+    # 优先精确匹配 Steam appmanifest (兼顾 3393110 正式服 与 4972320 测试服)
     foreach ($r in $roots) {
-        $acf = Join-Path $r "appmanifest_$AppId.acf"
-        if (Test-Path $acf) {
-            $txt = Get-Content $acf -Raw
-            if ($txt -match '"installdir"\s+"([^"]+)"') {
-                $gameAbs = Join-Path (Join-Path $r 'common') $matches[1]
-                if (Test-Path (Join-Path $gameAbs 'Aion2\Content\Paks\L10N')) {
-                    return $gameAbs
+        foreach ($aid in $AppIds) {
+            $acf = Join-Path $r "appmanifest_$aid.acf"
+            if (Test-Path $acf) {
+                $txt = Get-Content $acf -Raw
+                if ($txt -match '"installdir"\s+"([^"]+)"') {
+                    $gameAbs = Join-Path (Join-Path $r 'common') $matches[1]
+                    if (Test-Path (Join-Path $gameAbs 'Aion2\Content\Paks\L10N')) {
+                        return $gameAbs
+                    }
                 }
             }
         }
     }
 
-    # 特征识别 common 下目录
+    # 2. 扫描 Steam common 目录下的特征路径 (无论文件夹叫 AION 2 还是 AION 2 Playtest)
     foreach ($r in $roots) {
         $common = Join-Path $r 'common'
         if (Test-Path $common) {
@@ -124,13 +127,30 @@ function Find-GameRoot {
         }
     }
 
+    # 3. 搜寻 PURPLE 国际服 / 全球版默认安装路径 (名字通常为 AION 2)
+    foreach ($d in $fixedDrives) {
+        $purpleCandidates = @(
+            (Join-Path $d 'AION 2'),
+            (Join-Path $d 'Games\AION 2'),
+            (Join-Path $d 'NC\AION 2'),
+            (Join-Path $d 'Program Files (x86)\NC\AION 2'),
+            (Join-Path $d 'Program Files\NC\AION 2'),
+            (Join-Path $d 'NCSOFT\AION 2')
+        )
+        foreach ($pc in $purpleCandidates) {
+            if (Test-Path (Join-Path $pc 'Aion2\Content\Paks\L10N')) {
+                return $pc
+            }
+        }
+    }
+
     return $null
 }
 
 # 手动选择游戏目录保底
 function Select-GameFolder {
     $dlg = New-Object System.Windows.Forms.FolderBrowserDialog
-    $dlg.Description = "未自动检测到游戏安装位置。`n请手动选择 AION 2 Playtest 游戏根目录（包含 Aion2 文件夹的那一层）："
+    $dlg.Description = "未自动检测到游戏安装位置。`n请手动选择 AION 2 游戏根目录（包含 Aion2 文件夹的那一层，名字通常为 AION 2 或 AION 2 Playtest）："
     $dlg.ShowNewFolderButton = $false
     if ($dlg.ShowDialog() -eq 'OK') {
         $sel = $dlg.SelectedPath
@@ -144,10 +164,10 @@ function Select-GameFolder {
     return $null
 }
 
-# ==================== 原版完整 4 条免责声明弹窗 ====================
+# ==================== 专属定制免责声明弹窗 ====================
 function Show-Disclaimer {
     $form = New-Object System.Windows.Forms.Form
-    $form.Text = "AION 2 汉化工具 [测试版] - 制作: B站@吃素的佩奇"
+    $form.Text = "AION 2 国际服汉化工具 - 制作: B站@吃素的佩奇"
     $form.Size = New-Object System.Drawing.Size(580, 540)
     $form.StartPosition = 'CenterScreen'
     $form.FormBorderStyle = 'FixedDialog'
@@ -172,14 +192,14 @@ function Show-Disclaimer {
     $banner.Controls.Add($icon)
 
     $title = New-Object System.Windows.Forms.Label
-    $title.Text = '重要操作风险说明'
+    $title.Text = '重要操作风险说明 (国际服通用)'
     $title.Font = New-Object System.Drawing.Font('Microsoft YaHei UI', 16, [System.Drawing.FontStyle]::Bold)
     $title.ForeColor = [System.Drawing.Color]::FromArgb(255,165,0)
     $title.Location = New-Object System.Drawing.Point(58,15)
     $title.AutoSize = $true
     $banner.Controls.Add($title)
 
-    # 中部说明文字区（100% 还原原版 4 条，字字不差）
+    # 中部说明文字区
     $body = New-Object System.Windows.Forms.Panel
     $body.Dock = 'Fill'
     $body.BackColor = [System.Drawing.Color]::FromArgb(28,28,34)
@@ -207,9 +227,9 @@ function Show-Disclaimer {
         $y += 56
     }
 
-    # 强化作者署名与防倒卖栏
+    # 声明栏（已按要求去除末尾署名）
     $authorBanner = New-Object System.Windows.Forms.Label
-    $authorBanner.Text = "★ 本补丁为测试版专属 | 免费分享严禁倒卖 | 制作: B站@吃素的佩奇 "
+    $authorBanner.Text = "★ 本补丁支持 Steam / PURPLE 国际服 | 免费分享严禁倒卖"
     $authorBanner.Font = New-Object System.Drawing.Font('Microsoft YaHei UI', 9, [System.Drawing.FontStyle]::Bold)
     $authorBanner.ForeColor = [System.Drawing.Color]::FromArgb(160,130,240)
     $newY = $y + 4
@@ -218,7 +238,7 @@ function Show-Disclaimer {
     $authorBanner.TextAlign = 'MiddleLeft'
     $body.Controls.Add($authorBanner)
 
-    # 底部勾选确认栏（增强风险提示文案）
+    # 底部勾选确认栏
     $checkRow = New-Object System.Windows.Forms.Panel
     $checkRow.Dock = 'Bottom'
     $checkRow.Height = 56
@@ -282,17 +302,15 @@ function Show-Disclaimer {
 Show-Banner
 
 if ($Install) {
-    # 1. 弹出免责声明与作者署名
     $res = Show-Disclaimer
     if ($res -ne 'OK') {
         Write-Host "用户已取消操作。" -ForegroundColor Yellow
         exit 0
     }
 
-    # 2. 联网检查更新
     Check-Update
 
-    Write-Host "[1/4] 正在全盘扫描检测 AION 2 Playtest 游戏目录..." -ForegroundColor Cyan
+    Write-Host "[1/4] 正在全盘扫描检测 AION 2 国际服游戏目录 (Steam / PURPLE)..." -ForegroundColor Cyan
     $gameRoot = Find-GameRoot
     if (-not $gameRoot) {
         Write-Host "未能自动定位到游戏安装路径，请在弹出的窗口中手动指定..." -ForegroundColor Yellow
@@ -308,7 +326,7 @@ if ($Install) {
     $enUsL10nDir = Join-Path $gameRoot "Aion2\Content\L10N\Text\en-US"
     $enUsPaksDir = Join-Path $gameRoot "Aion2\Content\Paks\L10N\Text\en-US"
 
-    Write-Host "[2/4] 正在建立原版纯英文语言备份..." -ForegroundColor Cyan
+    Write-Host "[2/4] 正在建立官方原版英文语言备份..." -ForegroundColor Cyan
     if (-not (Test-Path $backupDir)) {
         New-Item -ItemType Directory -Path $backupDir -Force | Out-Null
         $curPak = Join-Path $enUsPaksDir "pakchunk502000-Windows_0_P.pak"
@@ -332,14 +350,14 @@ if ($Install) {
 
     Write-Host ""
     Write-Host "========================================================================" -ForegroundColor Green
-    Write-Host ">>> 恭喜！AION 2 测试版汉化安装成功！" -ForegroundColor Green
+    Write-Host ">>> 恭喜！AION 2 国际服汉化安装成功！" -ForegroundColor Green
     Write-Host ">>> 【核心提示】游戏内语言请保持默认的英文（English），进游戏即可直接显示中文！" -ForegroundColor Yellow
-    Write-Host ">>> 制作与维护：B站@吃素的佩奇  | 欢迎关注获取9.30公测最新汉化！" -ForegroundColor Magenta
+    Write-Host ">>> 制作与维护：B站@吃素的佩奇 | 欢迎关注获取9.30公测最新汉化！" -ForegroundColor Magenta
     Write-Host "========================================================================" -ForegroundColor Green
-    [System.Windows.Forms.MessageBox]::Show("AION 2 [测试版] 汉化补丁安装成功！`n`n【提示】：游戏内语言保持默认英文（English）即可直接享受中文！`n`n制作：B站@吃素的佩奇 `n欢迎关注获取9月30日公测最新汉化！", "汉化成功 - B站@吃素的佩奇", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Information)
+    [System.Windows.Forms.MessageBox]::Show("AION 2 国际服 (Steam / PURPLE) 汉化补丁安装成功！`n`n【提示】：游戏内语言保持默认英文（English）即可直接享受中文！`n`n制作：B站@吃素的佩奇`n欢迎关注获取9月30日公测最新汉化！", "汉化成功 - B站@吃素的佩奇", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Information)
 }
 elseif ($Restore) {
-    Write-Host "[1/3] 正在定位 AION 2 Playtest 游戏目录..." -ForegroundColor Cyan
+    Write-Host "[1/3] 正在定位 AION 2 游戏目录..." -ForegroundColor Cyan
     $gameRoot = Find-GameRoot
     if (-not $gameRoot) {
         $gameRoot = Select-GameFolder
@@ -363,7 +381,7 @@ elseif ($Restore) {
         Write-Host ">>> 还原成功！已完整恢复官方原版英文状态。" -ForegroundColor Green
         [System.Windows.Forms.MessageBox]::Show("已成功还原为官方原版英文客户端！`n`n制作：B站@吃素的佩奇", "还原成功", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Information)
     } else {
-        Write-Host ">>> 未检测到本地备份，已为您清理汉化数据，建议在 Steam 检验文件完整性。" -ForegroundColor Yellow
-        [System.Windows.Forms.MessageBox]::Show("已清理汉化数据。`n如需完全补全原版英文文件，可在 Steam 库中右键游戏 -> 属性 -> 验证游戏文件的完整性。", "提示 - B站@吃素的佩奇", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Warning)
+        Write-Host ">>> 未检测到本地备份，已为您清理汉化数据，建议检验文件完整性。" -ForegroundColor Yellow
+        [System.Windows.Forms.MessageBox]::Show("已清理汉化数据。`n如需完全补全原版英文文件，可使用启动器或 Steam 验证游戏文件的完整性。", "提示 - B站@吃素的佩奇", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Warning)
     }
 }

@@ -1,10 +1,10 @@
 ﻿{
-  "version": "1.0.0",
+  "version": "1.0.1",
   "version_type": "playtest",
   "game": "AION 2 Playtest",
   "app_id": "4972320",
-  "release_date": "2026-09-19",
-  "announcement": "当前为 AION 2 Steam 测试版专属汉化！9月30号公测正式服上线时将第一时间发布全新适配版本！",
+  "release_date": "2026-09-21",
+  "announcement": "v1.0.1 更新：优化客户端自适应扫描机制，并补充 PURPLE 防闪退设置说明！",
   "download_url": "https://github.com/duoluoyuji/Aion2-Steam-CN/releases/latest",
   "bilibili_url": "https://space.bilibili.com/3379443"
 }

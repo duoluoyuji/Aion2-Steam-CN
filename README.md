@@ -1,21 +1,29 @@
-﻿# AION 2 (Steam Playtest) Simplified Chinese Localization Patch
+# AION 2 (Steam Playtest) Simplified Chinese Localization Patch
 # 《永恒之塔2》(Steam 国际服测试版) 简体中文一键汉化补丁
+
+<p align="center">
+  <b>Author / 作者:</b> 哔哩哔哩 @吃素的佩奇<br>
+  <b>Bilibili Space / B站个人主页:</b> <a href="https://space.bilibili.com/3379443">https://space.bilibili.com/3379443</a><br>
+  <b>Target AppID / 目标游戏 ID:</b> 4972320 (AION 2 Playtest) / 3393110 (AION 2 Official)<br>
+  <b>Engine / 引擎:</b> Unreal Engine 5 (UE5)
+</p>
 
 ---
 
 ## 🇨🇳 中文说明 (Chinese)
 
 ### 📌 项目简介
-本补丁专为 **Steam 国际服《AION 2 Playtest》测试版** 开发。由于测试服客户端未内置中文语系选项，本工具基于虚幻引擎 5（UE5）官方的语言容器回退（Fallback）容灾机制，在纯本地实现界面简体中文化显示。
+本补丁专为 **《AION 2》国际服（Steam / PURPLE）** 开发。由于客户端未内置中文语系选项，本工具基于虚幻引擎 5（UE5）官方的语言容器回退（Fallback）容灾机制，在纯本地实现界面简体中文化显示。
 
 > ⚠️ **重要提示**：
-> 1. 本版本专为 **测试版（Playtest）** 适配。2026年9月30日正式公测开服时客户端将进行大版本更新，届时本项目将第一时间发布正式服适配补丁！
+> 1. 本版本支持 **测试版（Playtest）** 与 **正式服** 双版本智能自适应识别。
 > 2. 安装后，游戏内语言设置请 **保持默认的英文（English）** 即可直接显示简体中文！请勿在游戏设置中乱改语言。
+> 3. **稳定性建议（PURPLE 登录用户）**：若使用 PURPLE 启动器登录游戏，强烈建议在 PURPLE 客户端右上角「设置 -> 游戏设置 -> AION 2」中 **关闭【使用游戏内覆盖】**。PURPLE 覆盖层模块（`NCOverlay64.dll`）极易与虚幻5 DirectX 12 渲染器冲突造成游戏闪退，关闭后可大幅提升运行稳定性！
 
 ### ✨ 核心功能
-- **全盘自动检索**：自动扫描电脑所有盘符下的 Steam 游戏库，无需手动寻找游戏目录。
+- **全盘多端自动检索**：自动扫描电脑所有盘符下的 Steam 游戏库与 PURPLE 平台安装目录，无需手动寻找游戏路径。
 - **纯净本地运行**：不修改游戏进程内存、不破坏游戏网络数据平衡，纯本地界面语言包适配。
-- **一键无痕还原**：自带官方原版纯英文语言备份，随时可一键秒级还原，不影响 Steam 文件完整性校验。
+- **一键无痕还原**：自带官方原版纯英文语言备份，随时可一键秒级还原，不影响 Steam / PURPLE 文件完整性校验。
 - **内置版本检测**：自动检测后续 9.30 公测正式版更新，第一时间推送适配通知。
 
 ### 🚀 使用方法
@@ -23,7 +31,7 @@
 2. 解压至任意文件夹。
 3. 双击运行 **一键安装汉化.bat**。
 4. 勾选风险须知后点击「已了解，继续」，工具会自动完成全盘扫描与汉化注入。
-5. 启动 Steam 运行《AION 2 Playtest》即可！
+5. 启动游戏即可！
 
 ### 🔄 如何卸载还原
 双击运行 **一键还原英文.bat**，即可秒级恢复官方原版纯英文客户端。
@@ -33,14 +41,15 @@
 ## 🇺🇸 English Guide (For Overseas Players)
 
 ### 📌 Overview
-This tool provides a Simplified Chinese localization patch specifically for the **Steam Playtest version of AION 2** (AppID: 4972320). By utilizing Unreal Engine 5's native language container fallback mechanism, it loads localized text natively without external hooks or memory injectors.
+This tool provides a Simplified Chinese localization patch specifically for **AION 2** (Steam AppID: 4972320 / 3393110 & NCSoft PURPLE). By utilizing Unreal Engine 5's native language container fallback mechanism, it loads localized text natively without external hooks or memory injectors.
 
 > ⚠️ **Notice**:
-> 1. This patch is tailored exclusively for the **Playtest branch**. When the official Open Beta / Early Access launches on September 30, 2026, an updated release will be published here.
+> 1. Supports both **Playtest branch** and **Official launch client** via automatic directory & manifest detection.
 > 2. Keep the in-game language set to **English**. The engine will automatically display Simplified Chinese via the native fallback table.
+> 3. **PURPLE Stability Tip**: If launching via PURPLE, it is strongly recommended to **disable "In-Game Overlay"** in PURPLE Settings -> Game Settings -> AION 2. The overlay component (`NCOverlay64.dll`) is known to conflict with UE5 DX12 and cause crashes.
 
 ### ✨ Features
-- **Auto-detection**: Automatically locates your Steam library and AION 2 installation directory across all drives.
+- **Auto-detection**: Automatically locates your Steam library and PURPLE installation directory across all drives.
 - **Safe & Clean**: 100% file-level localization. No memory tampering, no DLL injection, and no risk of game balance alteration.
 - **One-click Restore**: Automatically backs up original English files. Can be fully restored with a single click anytime.
 - **Update Notification**: Built-in notification for future updates (e.g., September 30 Open Beta release).
@@ -50,7 +59,7 @@ This tool provides a Simplified Chinese localization patch specifically for the 
 2. Extract the archive to any folder.
 3. Run **一键安装汉化.bat** (Install).
 4. Review the notice, check the confirmation box, and click proceed.
-5. Launch **AION 2 Playtest** on Steam!
+5. Launch **AION 2**!
 
 ### 🔄 How to Uninstall / Restore
 Run **一键还原英文.bat** (Restore) to instantly revert all files back to the clean official English state.
