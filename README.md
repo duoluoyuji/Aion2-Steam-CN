@@ -1,65 +1,28 @@
-# AION 2 (Steam Playtest) Simplified Chinese Localization Patch
-# 《永恒之塔2》(Steam 国际服测试版) 简体中文一键汉化补丁
+# Aion2-Steam-CN (AION 2 正式服简体中文一键汉化工具)
 
-
-## 🇨🇳 中文说明 (Chinese)
-
-### 📌 项目简介
-本补丁专为 **《AION 2》国际服（Steam / PURPLE）** 开发。由于客户端未内置中文语系选项，本工具基于虚幻引擎 5（UE5）官方的语言容器回退（Fallback）容灾机制，在纯本地实现界面简体中文化显示。
-
-> ⚠️ **重要提示**：
-> 1. 本版本支持 **测试版（Playtest）** 与 **正式服** 双版本智能自适应识别。
-> 2. 安装后，游戏内语言设置请 **保持默认的英文（English）** 即可直接显示简体中文！请勿在游戏设置中乱改语言。
-> 3. **稳定性建议（PURPLE 登录用户）**：若使用 PURPLE 启动器登录游戏，强烈建议在 PURPLE 客户端右上角设置中 关闭【使用游戏内覆盖】。PURPLE 覆盖层模块（`NCOverlay64.dll`）极易与虚幻5 DirectX 12 渲染器冲突造成游戏闪退，关闭后可大幅提升运行稳定性！
-
-### ✨ 核心功能
-- **全盘多端自动检索**：自动扫描电脑所有盘符下的 Steam 游戏库与 PURPLE 平台安装目录，无需手动寻找游戏路径。
-- **纯净本地运行**：不修改游戏进程内存、不破坏游戏网络数据平衡，纯本地界面语言包适配。
-- **一键无痕还原**：自带官方原版纯英文语言备份，随时可一键秒级还原，不影响 Steam / PURPLE 文件完整性校验。
-- **内置版本检测**：自动检测后续 9.30 公测正式版更新，第一时间推送适配通知。
-
-### 🚀 使用方法
-1. 前往本仓库的 [Releases 页面](../../releases/latest) 下载最新压缩包。
-2. 解压至任意文件夹。
-3. 双击运行 **一键安装汉化.bat**。
-4. 勾选风险须知后点击「已了解，继续」，工具会自动完成全盘扫描与汉化注入。
-5. 启动游戏即可！
-
-### 🔄 如何卸载还原
-双击运行 **一键还原英文.bat**，即可秒级恢复官方原版纯英文客户端。
+> **支持客户端**：Steam 国际正式服 / NCSoft PURPLE 国际服  
+> **作者**：B站@吃素的佩奇  
+> **项目主页**：https://github.com/duoluoyuji/Aion2-Steam-CN  
+> **声明**：本工具完全免费，严禁倒卖。
 
 ---
 
-## 🇺🇸 English Guide (For Overseas Players)
+针对 9.30 游戏正式开服制作的更新。
 
-### 📌 Overview
-This tool provides a Simplified Chinese localization patch specifically for **AION 2** (Steam AppID: 4972320 / 3393110 & NCSoft PURPLE). By utilizing Unreal Engine 5's native language container fallback mechanism, it loads localized text natively without external hooks or memory injectors.
+### 这次更新改了什么：
+1. 同时支持 Steam 正式服和紫P国际服。
+2. 电脑里如果同时装了两个版本，会自动弹窗让你选汉化哪一个，也可以两个一起汉化；如果只装了一个版本，会直接自动识别安装。
+3. 安装前会自动备份原版英文，随时可以用「一键还原英文」恢复原样。
 
-> ⚠️ **Notice**:
-> 1. Supports both **Playtest branch** and **Official launch client** via automatic directory & manifest detection.
-> 2. Keep the in-game language set to **English**. The engine will automatically display Simplified Chinese via the native fallback table.
-> 3. **PURPLE Stability Tip**: If launching via PURPLE, it is strongly recommended to **disable "In-Game Overlay"** in PURPLE Settings -> Game Settings -> AION 2. The overlay component (`NCOverlay64.dll`) is known to conflict with UE5 DX12 and cause crashes.
-
-### ✨ Features
-- **Auto-detection**: Automatically locates your Steam library and PURPLE installation directory across all drives.
-- **Safe & Clean**: 100% file-level localization. No memory tampering, no DLL injection, and no risk of game balance alteration.
-- **One-click Restore**: Automatically backs up original English files. Can be fully restored with a single click anytime.
-- **Update Notification**: Built-in notification for future updates (e.g., September 30 Open Beta release).
-
-### 🚀 How to Install
-1. Download the latest archive from the [Releases](../../releases/latest) section.
-2. Extract the archive to any folder.
-3. Run **一键安装汉化.bat** (Install).
-4. Review the notice, check the confirmation box, and click proceed.
-5. Launch **AION 2**!
-
-### 🔄 How to Uninstall / Restore
-Run **一键还原英文.bat** (Restore) to instantly revert all files back to the clean official English state.
+### 关于汉化的一点说明：
+系统设置、按键菜单、基础界面、技能和背包装备大部分都已经汉化了，方便大家第一时间进游戏开荒。  
+因为正式服刚刚开，官方新加的一些活动、礼包或者公告文本，如果没汉化到会自动显示官方原版英文，属于正常机制。  
+开服后会持续跟进官方更新补丁与最新文本库。
 
 ---
 
-## ⚖️ Disclaimer / 免责声明
-1. 本补丁完全免费开源，仅供个人技术交流与语言学习使用。**严禁任何个人或第三方平台用于商业倒卖牟利！**
-2. 本工具涉及之游戏文本版权归原开发商及发行商（NCsoft）所有。
-3. 任何客户端修改均存在潜在的服务条款风险，使用本工具的风险由使用者自行承担。
-4. This project is free, open-source, and intended strictly for educational and personal research purposes. Commercial redistribution is strictly prohibited.
+### 使用方法：
+1. 关掉游戏。
+2. 双击运行 `一键安装汉化.bat`。
+3. 游戏内语言保持默认的 **English**，进游戏直接就是中文。
+4. 如需还原，双击运行 `一键还原英文.bat`。
