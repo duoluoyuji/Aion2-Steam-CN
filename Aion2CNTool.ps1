@@ -15,7 +15,7 @@ Add-Type -AssemblyName System.Drawing
 
 $ToolDir        = if ($PSScriptRoot) { $PSScriptRoot } else { (Get-Location).Path }
 $ZhDir          = Join-Path $ToolDir 'zh'
-$CurrentVersion = '1.1.0'
+$CurrentVersion = '1.1.1'
 # 3393110 为 Steam 正式服 AppID，4972320 为 Steam Playtest 测试服 AppID
 $AppIds         = @('3393110', '4972320')
 $RemoteVersionUrl   = 'https://raw.githubusercontent.com/duoluoyuji/Aion2-Steam-CN/main/version.json'
