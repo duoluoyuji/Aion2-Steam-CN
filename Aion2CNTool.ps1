@@ -21,6 +21,59 @@ $AppIds         = @('3393110', '4972320')
 $RemoteVersionUrl   = 'https://raw.githubusercontent.com/duoluoyuji/Aion2-Steam-CN/main/version.json'
 $FallbackVersionUrl = 'https://ghp.ci/https://raw.githubusercontent.com/duoluoyuji/Aion2-Steam-CN/main/version.json'
 
+# ==================== 安装前置检查与文件校验 ====================
+function Assert-PatchPayload {
+    $required = @(
+        @{ Path = (Join-Path $ZhDir 'L10NString.dat'); MinSize = 1 },
+        @{ Path = (Join-Path $ZhDir 'pakchunk502000-Windows_0_P.pak'); MinSize = 1 }
+    )
+
+    foreach ($item in $required) {
+        if (-not (Test-Path -LiteralPath $item.Path -PathType Leaf)) {
+            throw "汉化资源缺失：$($item.Path)"
+        }
+
+        $length = (Get-Item -LiteralPath $item.Path).Length
+        if ($length -lt $item.MinSize) {
+            throw "汉化资源为空或损坏：$($item.Path)"
+        }
+    }
+}
+
+function Assert-GameNotRunning {
+    $running = @(Get-Process -Name 'Aion2' -ErrorAction SilentlyContinue)
+    if ($running.Count -gt 0) {
+        throw '检测到 AION 2 正在运行。请完全退出游戏后再重试，避免修改中的文件被锁定。'
+    }
+}
+
+function Assert-BackupIsValid {
+    param([Parameter(Mandatory)][string]$BackupDir)
+
+    $backupPak = Join-Path $BackupDir 'pakchunk502000-Windows_0_P.pak'
+    if (-not (Test-Path -LiteralPath $backupPak -PathType Leaf)) {
+        throw "已有备份目录但缺少原版语言包：$BackupDir。为避免覆盖唯一备份，请先检查该目录。"
+    }
+
+    if ((Get-Item -LiteralPath $backupPak).Length -le 1000) {
+        throw "已有备份目录中的原版语言包异常：$backupPak。为避免覆盖唯一备份，请先检查该目录。"
+    }
+}
+
+function Copy-FileVerified {
+    param(
+        [Parameter(Mandatory)][string]$Source,
+        [Parameter(Mandatory)][string]$Destination
+    )
+
+    Copy-Item -LiteralPath $Source -Destination $Destination -Force
+    $sourceHash = (Get-FileHash -LiteralPath $Source -Algorithm SHA256).Hash
+    $destinationHash = (Get-FileHash -LiteralPath $Destination -Algorithm SHA256).Hash
+    if ($sourceHash -ne $destinationHash) {
+        throw "文件校验失败：$Destination"
+    }
+}
+
 # ==================== 控制台作者署名横幅 ====================
 function Show-Banner {
     Write-Host "========================================================================" -ForegroundColor Magenta
@@ -464,6 +517,8 @@ if ($Install) {
         exit 0
     }
 
+    Assert-PatchPayload
+    Assert-GameNotRunning
     Check-Update
 
     Write-Host "[1/4] 正在全盘扫描检测 AION 2 游戏版本 (Steam / PURPLE)..." -ForegroundColor Cyan
@@ -484,28 +539,39 @@ if ($Install) {
         $backupDir   = Join-Path $gameRoot "Aion2_English_Backup_Safe"
         $enUsL10nDir = Join-Path $gameRoot "Aion2\Content\L10N\Text\en-US"
         $enUsPaksDir = Join-Path $gameRoot "Aion2\Content\Paks\L10N\Text\en-US"
+        $curPak      = Join-Path $enUsPaksDir "pakchunk502000-Windows_0_P.pak"
+
+        if (-not (Test-Path -LiteralPath $curPak -PathType Leaf)) {
+            throw "未找到官方英文语言包：$curPak"
+        }
+        if ((Get-Item -LiteralPath $curPak).Length -le 1000) {
+            throw "官方英文语言包异常或不完整：$curPak"
+        }
 
         Write-Host "[2/4] 正在建立官方原版英文语言备份..." -ForegroundColor Cyan
         if (-not (Test-Path $backupDir)) {
             New-Item -ItemType Directory -Path $backupDir -Force | Out-Null
-            $curPak = Join-Path $enUsPaksDir "pakchunk502000-Windows_0_P.pak"
-            if ((Test-Path $curPak) -and ((Get-Item $curPak).Length -gt 1000)) {
-                Copy-Item "$enUsPaksDir\*" $backupDir -Force
-                Write-Host "-> 官方原版英文文件已安全备份至: $backupDir" -ForegroundColor Green
-            }
+            Copy-Item (Join-Path $enUsPaksDir '*') $backupDir -Force
+            Assert-BackupIsValid -BackupDir $backupDir
+            Write-Host "-> 官方原版英文文件已安全备份至: $backupDir" -ForegroundColor Green
         } else {
+            Assert-BackupIsValid -BackupDir $backupDir
             Write-Host "-> 本地已存在安全备份，跳过覆盖。" -ForegroundColor Gray
         }
 
         Write-Host "[3/4] 正在释放中文数据表 (L10NString.dat)..." -ForegroundColor Cyan
         New-Item -ItemType Directory -Path $enUsL10nDir -Force | Out-Null
-        Copy-Item (Join-Path $ZhDir "L10NString.dat") (Join-Path $enUsL10nDir "L10NString.dat") -Force
+        Copy-FileVerified `
+            -Source (Join-Path $ZhDir "L10NString.dat") `
+            -Destination (Join-Path $enUsL10nDir "L10NString.dat")
 
         Write-Host "[4/4] 正在注入虚幻5回退机制 Stub..." -ForegroundColor Cyan
-        Remove-Item "$enUsPaksDir\pakchunk502000-Windows_0_P.sig" -Force -ErrorAction SilentlyContinue
-        Remove-Item "$enUsPaksDir\pakchunk502000-Windows_0_P.ucas" -Force -ErrorAction SilentlyContinue
-        Remove-Item "$enUsPaksDir\pakchunk502000-Windows_0_P.utoc" -Force -ErrorAction SilentlyContinue
-        Copy-Item (Join-Path $ZhDir "pakchunk502000-Windows_0_P.pak") (Join-Path $enUsPaksDir "pakchunk502000-Windows_0_P.pak") -Force
+        foreach ($sidecar in @('sig', 'ucas', 'utoc')) {
+            Remove-Item (Join-Path $enUsPaksDir "pakchunk502000-Windows_0_P.$sidecar") -Force -ErrorAction SilentlyContinue
+        }
+        Copy-FileVerified `
+            -Source (Join-Path $ZhDir "pakchunk502000-Windows_0_P.pak") `
+            -Destination (Join-Path $enUsPaksDir "pakchunk502000-Windows_0_P.pak")
         Write-Host "-> 该目录汉化部署完成！" -ForegroundColor Green
     }
 
@@ -518,6 +584,7 @@ if ($Install) {
     [System.Windows.Forms.MessageBox]::Show("AION 2 汉化补丁安装成功 (共处理 $processedCount 个客户端)！`n`n【提示】：游戏内语言保持默认英文（English）即可直接享受中文！`n`n制作：B站@吃素的佩奇`n欢迎关注获取最新汉化动态！", "汉化成功 - B站@吃素的佩奇", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Information)
 }
 elseif ($Restore) {
+    Assert-GameNotRunning
     Write-Host "[1/3] 正在全盘扫描检测 AION 2 游戏版本 (Steam / PURPLE)..." -ForegroundColor Cyan
     $selectedRoots = @(Select-TargetGameRoots -ActionName "还原英文")
     if ($selectedRoots.Count -eq 0) {
@@ -544,6 +611,7 @@ elseif ($Restore) {
 
         Write-Host "[3/3] 还原官方原版英文语言包..." -ForegroundColor Cyan
         if (Test-Path $backupDir) {
+            Assert-BackupIsValid -BackupDir $backupDir
             Copy-Item "$backupDir\*" $enUsPaksDir -Force
             Write-Host "-> 还原成功！已完整恢复官方原版英文状态。" -ForegroundColor Green
         } else {
