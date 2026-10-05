@@ -74,6 +74,143 @@ function Copy-FileVerified {
     }
 }
 
+function New-VerifiedBackup {
+    param(
+        [Parameter(Mandatory)][string]$SourceDir,
+        [Parameter(Mandatory)][string]$BackupDir
+    )
+
+    $temporaryBackupDir = "$BackupDir.creating-$([Guid]::NewGuid().ToString('N'))"
+    try {
+        New-Item -ItemType Directory -Path $temporaryBackupDir -Force | Out-Null
+        Copy-Item -Path (Join-Path $SourceDir '*') -Destination $temporaryBackupDir -Force
+        Assert-BackupIsValid -BackupDir $temporaryBackupDir
+        Move-Item -LiteralPath $temporaryBackupDir -Destination $BackupDir
+    }
+    catch {
+        Remove-Item -LiteralPath $temporaryBackupDir -Recurse -Force -ErrorAction SilentlyContinue
+        throw
+    }
+}
+
+function Invoke-PatchFileChanges {
+    param(
+        [Parameter(Mandatory)][string]$PatchDir,
+        [Parameter(Mandatory)][string]$EnUsL10nDir,
+        [Parameter(Mandatory)][string]$EnUsPaksDir
+    )
+
+    New-Item -ItemType Directory -Path $EnUsL10nDir -Force | Out-Null
+    Copy-FileVerified `
+        -Source (Join-Path $PatchDir 'L10NString.dat') `
+        -Destination (Join-Path $EnUsL10nDir 'L10NString.dat')
+
+    foreach ($sidecar in @('sig', 'ucas', 'utoc')) {
+        Remove-Item -LiteralPath (Join-Path $EnUsPaksDir "pakchunk502000-Windows_0_P.$sidecar") -Force -ErrorAction SilentlyContinue
+    }
+    Copy-FileVerified `
+        -Source (Join-Path $PatchDir 'pakchunk502000-Windows_0_P.pak') `
+        -Destination (Join-Path $EnUsPaksDir 'pakchunk502000-Windows_0_P.pak')
+}
+
+function Install-PatchForGameRoot {
+    param(
+        [Parameter(Mandatory)][string]$GameRoot,
+        [string]$PatchDir = $script:ZhDir
+    )
+
+    $backupDir   = Join-Path $GameRoot 'Aion2_English_Backup_Safe'
+    $enUsL10nDir = Join-Path $GameRoot 'Aion2\Content\L10N\Text\en-US'
+    $enUsPaksDir = Join-Path $GameRoot 'Aion2\Content\Paks\L10N\Text\en-US'
+    $curPak      = Join-Path $enUsPaksDir 'pakchunk502000-Windows_0_P.pak'
+
+    Write-Host "[2/4] 正在建立官方原版英文语言备份..." -ForegroundColor Cyan
+    if (Test-Path -LiteralPath $backupDir -PathType Container) {
+        Assert-BackupIsValid -BackupDir $backupDir
+        Write-Host "-> 本地已存在安全备份，跳过覆盖。" -ForegroundColor Gray
+    }
+    else {
+        if (-not (Test-Path -LiteralPath $curPak -PathType Leaf)) {
+            throw "未找到官方英文语言包：$curPak"
+        }
+        if ((Get-Item -LiteralPath $curPak).Length -le 1000) {
+            throw "首次安装需要完整的官方英文语言包：$curPak。请先在启动器中验证游戏文件完整性。"
+        }
+
+        New-VerifiedBackup -SourceDir $enUsPaksDir -BackupDir $backupDir
+        Write-Host "-> 官方原版英文文件已安全备份至: $backupDir" -ForegroundColor Green
+    }
+
+    $targetFiles = @(
+        (Join-Path $enUsL10nDir 'L10NString.dat'),
+        $curPak,
+        (Join-Path $enUsPaksDir 'pakchunk502000-Windows_0_P.sig'),
+        (Join-Path $enUsPaksDir 'pakchunk502000-Windows_0_P.ucas'),
+        (Join-Path $enUsPaksDir 'pakchunk502000-Windows_0_P.utoc')
+    )
+    $rollbackDir = Join-Path $GameRoot ('.Aion2CNTool-rollback-' + [Guid]::NewGuid().ToString('N'))
+    $snapshot = @()
+    $l10nDirExisted = Test-Path -LiteralPath $enUsL10nDir -PathType Container
+
+    try {
+        New-Item -ItemType Directory -Path $rollbackDir -Force | Out-Null
+        for ($index = 0; $index -lt $targetFiles.Count; $index++) {
+            $target = $targetFiles[$index]
+            $existed = Test-Path -LiteralPath $target -PathType Leaf
+            $snapshotPath = Join-Path $rollbackDir "$index.bin"
+            if ($existed) {
+                Copy-FileVerified -Source $target -Destination $snapshotPath
+            }
+            $snapshot += [PSCustomObject]@{
+                Path         = $target
+                Existed      = $existed
+                SnapshotPath = $snapshotPath
+            }
+        }
+
+        Write-Host "[3/4] 正在释放中文数据表 (L10NString.dat)..." -ForegroundColor Cyan
+        Write-Host "[4/4] 正在注入虚幻5回退机制 Stub..." -ForegroundColor Cyan
+        Invoke-PatchFileChanges -PatchDir $PatchDir -EnUsL10nDir $enUsL10nDir -EnUsPaksDir $enUsPaksDir
+    }
+    catch {
+        $installError = $_.Exception.Message
+        $rollbackErrors = @()
+
+        foreach ($item in $snapshot) {
+            try {
+                if ($item.Existed) {
+                    $parentDir = Split-Path -Parent $item.Path
+                    New-Item -ItemType Directory -Path $parentDir -Force | Out-Null
+                    Copy-FileVerified -Source $item.SnapshotPath -Destination $item.Path
+                }
+                else {
+                    Remove-Item -LiteralPath $item.Path -Force -ErrorAction SilentlyContinue
+                }
+            }
+            catch {
+                $rollbackErrors += "$($item.Path): $($_.Exception.Message)"
+            }
+        }
+
+        if (-not $l10nDirExisted -and (Test-Path -LiteralPath $enUsL10nDir -PathType Container)) {
+            $remainingFiles = @(Get-ChildItem -LiteralPath $enUsL10nDir -Force -ErrorAction SilentlyContinue)
+            if ($remainingFiles.Count -eq 0) {
+                Remove-Item -LiteralPath $enUsL10nDir -Force -ErrorAction SilentlyContinue
+            }
+        }
+
+        if ($rollbackErrors.Count -gt 0) {
+            throw "汉化安装失败，且自动回滚不完整：$installError`n$($rollbackErrors -join "`n")"
+        }
+        throw "汉化安装失败，已自动恢复修改前文件：$installError"
+    }
+    finally {
+        Remove-Item -LiteralPath $rollbackDir -Recurse -Force -ErrorAction SilentlyContinue
+    }
+
+    Write-Host "-> 该目录汉化部署完成！" -ForegroundColor Green
+}
+
 # ==================== 控制台作者署名横幅 ====================
 function Show-Banner {
     Write-Host "========================================================================" -ForegroundColor Magenta
@@ -536,43 +673,7 @@ if ($Install) {
         Write-Host ">>> 正在处理目标游戏目录 [$processedCount/$($selectedRoots.Count)]: $gameRoot" -ForegroundColor Green
         Write-Host "========================================================================" -ForegroundColor DarkCyan
 
-        $backupDir   = Join-Path $gameRoot "Aion2_English_Backup_Safe"
-        $enUsL10nDir = Join-Path $gameRoot "Aion2\Content\L10N\Text\en-US"
-        $enUsPaksDir = Join-Path $gameRoot "Aion2\Content\Paks\L10N\Text\en-US"
-        $curPak      = Join-Path $enUsPaksDir "pakchunk502000-Windows_0_P.pak"
-
-        if (-not (Test-Path -LiteralPath $curPak -PathType Leaf)) {
-            throw "未找到官方英文语言包：$curPak"
-        }
-        if ((Get-Item -LiteralPath $curPak).Length -le 1000) {
-            throw "官方英文语言包异常或不完整：$curPak"
-        }
-
-        Write-Host "[2/4] 正在建立官方原版英文语言备份..." -ForegroundColor Cyan
-        if (-not (Test-Path $backupDir)) {
-            New-Item -ItemType Directory -Path $backupDir -Force | Out-Null
-            Copy-Item (Join-Path $enUsPaksDir '*') $backupDir -Force
-            Assert-BackupIsValid -BackupDir $backupDir
-            Write-Host "-> 官方原版英文文件已安全备份至: $backupDir" -ForegroundColor Green
-        } else {
-            Assert-BackupIsValid -BackupDir $backupDir
-            Write-Host "-> 本地已存在安全备份，跳过覆盖。" -ForegroundColor Gray
-        }
-
-        Write-Host "[3/4] 正在释放中文数据表 (L10NString.dat)..." -ForegroundColor Cyan
-        New-Item -ItemType Directory -Path $enUsL10nDir -Force | Out-Null
-        Copy-FileVerified `
-            -Source (Join-Path $ZhDir "L10NString.dat") `
-            -Destination (Join-Path $enUsL10nDir "L10NString.dat")
-
-        Write-Host "[4/4] 正在注入虚幻5回退机制 Stub..." -ForegroundColor Cyan
-        foreach ($sidecar in @('sig', 'ucas', 'utoc')) {
-            Remove-Item (Join-Path $enUsPaksDir "pakchunk502000-Windows_0_P.$sidecar") -Force -ErrorAction SilentlyContinue
-        }
-        Copy-FileVerified `
-            -Source (Join-Path $ZhDir "pakchunk502000-Windows_0_P.pak") `
-            -Destination (Join-Path $enUsPaksDir "pakchunk502000-Windows_0_P.pak")
-        Write-Host "-> 该目录汉化部署完成！" -ForegroundColor Green
+        Install-PatchForGameRoot -GameRoot $gameRoot
     }
 
     Write-Host ""
