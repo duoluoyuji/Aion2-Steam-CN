@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*-
+﻿# -*- coding: utf-8 -*-
 # AION 2 (Steam / PURPLE 正式版) 简体中文一键汉化与还原工具
 # 作者: B站@吃素的佩奇
 # 开源主页: https://github.com/duoluoyuji/Aion2-Steam-CN
