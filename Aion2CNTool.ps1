@@ -1,4 +1,4 @@
-﻿# -*- coding: utf-8 -*-
+# -*- coding: utf-8 -*-
 # AION 2 (Steam / PURPLE 正式版) 简体中文一键汉化与还原工具
 # 作者: B站@吃素的佩奇
 # 开源主页: https://github.com/duoluoyuji/Aion2-Steam-CN
@@ -60,7 +60,13 @@ function Check-Update {
             $tip = "发现 AION 2 汉化工具最新版本：v$($remoteJson.version)`n`n公告内容：`n$($remoteJson.announcement)`n`n是否立即打开下载页面？"
             $box = [System.Windows.Forms.MessageBox]::Show($tip, "版本更新提示 - B站@吃素的佩奇", [System.Windows.Forms.MessageBoxButtons]::YesNo, [System.Windows.Forms.MessageBoxIcon]::Question)
             if ($box -eq [System.Windows.Forms.DialogResult]::Yes) {
-                [System.Diagnostics.Process]::Start("https://github.com/duoluoyuji/Aion2-Steam-CN/releases")
+                try {
+                    Start-Process "https://github.com/duoluoyuji/Aion2-Steam-CN/releases"
+                } catch {
+                    try {
+                        [System.Diagnostics.Process]::Start((New-Object System.Diagnostics.ProcessStartInfo("https://github.com/duoluoyuji/Aion2-Steam-CN/releases") -Property @{UseShellExecute=$true}))
+                    } catch {}
+                }
             }
         } else {
             Write-Host "-> 当前已是最新正式版本 (v$CurrentVersion)。" -ForegroundColor DarkGray
@@ -467,6 +473,17 @@ if ($Install) {
     Check-Update
 
     Write-Host "[1/4] 正在全盘扫描检测 AION 2 游戏版本 (Steam / PURPLE)..." -ForegroundColor Cyan
+        # 自动安全解除游戏和启动器进程占用，防止文件被锁死导致无法替换
+    Write-Host "[1.5/4] 正在检查冲突进程并释放文件锁..." -ForegroundColor Cyan
+    $conflictList = @("Aion2", "Aion2-Win64-Shipping", "NCLauncher", "NCLauncher2", "Purple", "PurpleApp")
+    foreach ($proc in $conflictList) {
+        $p = Get-Process -Name $proc -ErrorAction SilentlyContinue
+        if ($p) {
+            Write-Host "-> 检测到运行中的进程: $proc，正在安全解除占用..." -ForegroundColor Yellow
+            Stop-Process -Name $proc -Force -ErrorAction SilentlyContinue
+            Start-Sleep -Milliseconds 600
+        }
+    }
     $selectedRoots = @(Select-TargetGameRoots -ActionName "安装汉化")
     if ($selectedRoots.Count -eq 0) {
         Write-Host "未选择有效游戏目录，操作已终止。" -ForegroundColor Red
@@ -502,9 +519,20 @@ if ($Install) {
         Copy-Item (Join-Path $ZhDir "L10NString.dat") (Join-Path $enUsL10nDir "L10NString.dat") -Force
 
         Write-Host "[4/4] 正在注入虚幻5回退机制 Stub..." -ForegroundColor Cyan
-        Remove-Item "$enUsPaksDir\pakchunk502000-Windows_0_P.sig" -Force -ErrorAction SilentlyContinue
-        Remove-Item "$enUsPaksDir\pakchunk502000-Windows_0_P.ucas" -Force -ErrorAction SilentlyContinue
-        Remove-Item "$enUsPaksDir\pakchunk502000-Windows_0_P.utoc" -Force -ErrorAction SilentlyContinue
+        $sigFiles = @(
+            (Join-Path $enUsPaksDir "pakchunk502000-Windows_0_P.sig"),
+            (Join-Path $enUsPaksDir "pakchunk502000-Windows_0_P.ucas"),
+            (Join-Path $enUsPaksDir "pakchunk502000-Windows_0_P.utoc")
+        )
+        foreach ($sf in $sigFiles) {
+            if (Test-Path $sf) {
+                Clear-Content -Path $sf -Force -ErrorAction SilentlyContinue
+                Remove-Item $sf -Force -ErrorAction SilentlyContinue
+                if (Test-Path $sf) {
+                    [System.IO.File]::WriteAllBytes($sf, @()) 2>$null
+                }
+            }
+        }
         Copy-Item (Join-Path $ZhDir "pakchunk502000-Windows_0_P.pak") (Join-Path $enUsPaksDir "pakchunk502000-Windows_0_P.pak") -Force
         Write-Host "-> 该目录汉化部署完成！" -ForegroundColor Green
     }
@@ -519,6 +547,17 @@ if ($Install) {
 }
 elseif ($Restore) {
     Write-Host "[1/3] 正在全盘扫描检测 AION 2 游戏版本 (Steam / PURPLE)..." -ForegroundColor Cyan
+        # 自动安全解除游戏和启动器进程占用，防止文件被锁死导致无法替换
+    Write-Host "[1.5/4] 正在检查冲突进程并释放文件锁..." -ForegroundColor Cyan
+    $conflictList = @("Aion2", "Aion2-Win64-Shipping", "NCLauncher", "NCLauncher2", "Purple", "PurpleApp")
+    foreach ($proc in $conflictList) {
+        $p = Get-Process -Name $proc -ErrorAction SilentlyContinue
+        if ($p) {
+            Write-Host "-> 检测到运行中的进程: $proc，正在安全解除占用..." -ForegroundColor Yellow
+            Stop-Process -Name $proc -Force -ErrorAction SilentlyContinue
+            Start-Sleep -Milliseconds 600
+        }
+    }
     $selectedRoots = @(Select-TargetGameRoots -ActionName "还原英文")
     if ($selectedRoots.Count -eq 0) {
         Write-Host "未选择有效游戏目录，操作已终止。" -ForegroundColor Red
