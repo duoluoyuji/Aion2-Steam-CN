@@ -1,10 +1,10 @@
 {
-  "version": "1.1.1",
+  "version": "1.2.0",
   "version_type": "official_release",
   "game": "AION 2 Official Release",
   "app_id": "3393110",
-  "release_date": "2026-10-04",
-  "announcement": "v1.1.1 更新：全面修复深渊商店装备外观与按键界面显示，告别问号！",
+  "release_date": "2026-10-10",
+  "announcement": "v1.2.0 简繁双语图形版：全新图形化独立软件界面，内置简体与繁体中文自由转换，全面优化多客户端识别！",
   "download_url": "https://github.com/duoluoyuji/Aion2-Steam-CN/releases/latest",
   "bilibili_url": "https://space.bilibili.com/3379443"
 }

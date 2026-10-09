@@ -1,11 +1,12 @@
 ﻿# -*- coding: utf-8 -*-
-# AION 2 (Steam / PURPLE 正式版) 简体中文一键汉化与还原工具
+# AION 2 (Steam / PURPLE 正式版) 简繁双语一键汉化与还原工具
 # 作者: B站@吃素的佩奇
 # 开源主页: https://github.com/duoluoyuji/Aion2-Steam-CN
 
 param(
     [switch]$Install,
-    [switch]$Restore
+    [switch]$Restore,
+    [string]$Lang = ""
 )
 
 $ErrorActionPreference = 'Stop'
@@ -15,7 +16,14 @@ Add-Type -AssemblyName System.Drawing
 
 $ToolDir        = if ($PSScriptRoot) { $PSScriptRoot } else { (Get-Location).Path }
 $ZhDir          = Join-Path $ToolDir 'zh'
-$CurrentVersion = '1.1.1'
+$ZhTwDir        = Join-Path $ToolDir 'zh-TW'
+$LangName       = '简体中文'
+$ActiveSourceDir = $ZhDir
+if ($Lang -eq 'zh-TW' -or $Lang -eq 'tw' -or $Lang -eq 'cht') {
+    $ActiveSourceDir = $ZhTwDir
+    $LangName = '繁体中文'
+}
+$CurrentVersion = '1.2.0'
 # 3393110 为 Steam 正式服 AppID，4972320 为 Steam Playtest 测试服 AppID
 $AppIds         = @('3393110', '4972320')
 $RemoteVersionUrl   = 'https://raw.githubusercontent.com/duoluoyuji/Aion2-Steam-CN/main/version.json'
@@ -24,7 +32,7 @@ $FallbackVersionUrl = 'https://ghp.ci/https://raw.githubusercontent.com/duoluoyu
 # ==================== 控制台作者署名横幅 ====================
 function Show-Banner {
     Write-Host "========================================================================" -ForegroundColor Magenta
-    Write-Host "      AION 2 (Steam / PURPLE 正式版) 简体中文汉化工具 v$CurrentVersion" -ForegroundColor Cyan
+    Write-Host "      AION 2 (Steam / PURPLE 正式版) 简繁双语一键汉化工具 v$CurrentVersion" -ForegroundColor Cyan
     Write-Host "      开源主页: https://github.com/duoluoyuji/Aion2-Steam-CN" -ForegroundColor Gray
     Write-Host "      【声明】本工具完全免费分享，仅供交流学习，严禁倒卖牟利！" -ForegroundColor Red
     Write-Host "========================================================================" -ForegroundColor Magenta
@@ -55,7 +63,21 @@ function Check-Update {
     }
 
     if ($remoteJson) {
-        if ($remoteJson.version -and ($remoteJson.version -ne $CurrentVersion) -and ($remoteJson.version -ne '1.0.1')) {
+        $shouldUpdate = $false
+        try {
+            $rv = [System.Version]$remoteJson.version
+            $lv = [System.Version]$CurrentVersion
+            if ($rv -gt $lv) {
+                $shouldUpdate = $true
+            }
+        } catch {
+            # 容错：若版本号非标准四段/三段数字，则仅当非自身且非旧版本时处理
+            if ($remoteJson.version -and ($remoteJson.version -ne $CurrentVersion) -and ($remoteJson.version -ne '1.1.1') -and ($remoteJson.version -ne '1.1.0')) {
+                $shouldUpdate = $true
+            }
+        }
+
+        if ($shouldUpdate) {
             Write-Host ">>> 发现新版本: v$($remoteJson.version)！" -ForegroundColor Yellow
             $tip = "发现 AION 2 汉化工具最新版本：v$($remoteJson.version)`n`n公告内容：`n$($remoteJson.announcement)`n`n是否立即打开下载页面？"
             $box = [System.Windows.Forms.MessageBox]::Show($tip, "版本更新提示 - B站@吃素的佩奇", [System.Windows.Forms.MessageBoxButtons]::YesNo, [System.Windows.Forms.MessageBoxIcon]::Question)
@@ -81,7 +103,7 @@ function Get-AllGameRoots {
     $detected = @()
     $fixedDrives = (Get-PSDrive -PSProvider FileSystem | Where-Object { $_.Free -ne $null -and $_.Root }).Root
     
-    # 1. 扫描 Steam 游戏库
+    # ---------------- 1. 扫描 Steam 游戏库 ----------------
     $steamRoots = @()
     foreach ($d in $fixedDrives) {
         $candidates = @(
@@ -106,29 +128,29 @@ function Get-AllGameRoots {
 
     $steamRoots = $steamRoots | Select-Object -Unique
 
-    # 优先精确匹配 Steam appmanifest (兼顾 3393110 正式服 与 4972320 测试服)
     foreach ($r in $steamRoots) {
         foreach ($aid in $AppIds) {
             $acf = Join-Path $r "appmanifest_$aid.acf"
             if (Test-Path $acf) {
-                $txt = Get-Content $acf -Raw
-                if ($txt -match '"installdir"\s+"([^"]+)"') {
-                    $gameAbs = Join-Path (Join-Path $r 'common') $matches[1]
-                    if (Test-Path (Join-Path $gameAbs 'Aion2\Content\Paks\L10N')) {
-                        $label = if ($aid -eq '3393110') { "Steam 国际正式版" } else { "Steam 测试服版" }
-                        if (-not ($detected | Where-Object { $_.Path.ToLower() -eq $gameAbs.ToLower() })) {
-                            $detected += [PSCustomObject]@{
-                                Platform = $label
-                                Path     = $gameAbs
-                                Type     = "Steam"
+                try {
+                    $txt = Get-Content $acf -Raw -ErrorAction SilentlyContinue
+                    if ($txt -match '"installdir"\s+"([^"]+)"') {
+                        $gameAbs = Join-Path (Join-Path $r 'common') $matches[1]
+                        if (Test-Path (Join-Path $gameAbs 'Aion2\Content\Paks\L10N')) {
+                            $label = if ($aid -eq '3393110') { "Steam 国际正式版" } else { "Steam 测试服版" }
+                            if (-not ($detected | Where-Object { $_.Path.ToLower() -eq $gameAbs.ToLower() })) {
+                                $detected += [PSCustomObject]@{
+                                    Platform = $label
+                                    Path     = $gameAbs
+                                    Type     = "Steam"
+                                }
                             }
                         }
                     }
-                }
+                } catch {}
             }
         }
 
-        # 扫描 common 目录下未挂载 acf 或自定义命名的 Aion2
         $common = Join-Path $r 'common'
         if (Test-Path $common) {
             $hits = Get-ChildItem $common -Directory -ErrorAction SilentlyContinue | Where-Object {
@@ -146,21 +168,90 @@ function Get-AllGameRoots {
         }
     }
 
-    # 2. 搜寻 PURPLE 国际服 / 全球版独立安装路径
+    # ---------------- 2. 三重增强：扫描 NCSoft PURPLE (紫P) 客户端 ----------------
+    # 增强 1：从 plaync 官方注册表枚举 BaseDir
+    $playncRegKeys = @(
+        "HKLM:\SOFTWARE\plaync",
+        "HKLM:\SOFTWARE\WOW6432Node\plaync",
+        "HKCU:\SOFTWARE\plaync"
+    )
+    foreach ($rk in $playncRegKeys) {
+        try {
+            if (Test-Path $rk) {
+                $subKeys = Get-ChildItem -Path $rk -ErrorAction SilentlyContinue
+                foreach ($sk in $subKeys) {
+                    $props = Get-ItemProperty -Path $sk.PSPath -ErrorAction SilentlyContinue
+                    if ($props -and $props.BaseDir) {
+                        $bPath = $props.BaseDir.ToString().TrimEnd('\')
+                        if (Test-Path (Join-Path $bPath 'Aion2\Content\Paks\L10N')) {
+                            if (-not ($detected | Where-Object { $_.Path.ToLower() -eq $bPath.ToLower() })) {
+                                $detected += [PSCustomObject]@{
+                                    Platform = "NCSoft PURPLE 国际服 (注册表定位)"
+                                    Path     = $bPath
+                                    Type     = "PURPLE"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        } catch {}
+    }
+
+    # 增强 2：从 Windows 软件卸载列表中精确匹配 AION 2 / PURPLE 安装目录
+    $uninstallRegKeys = @(
+        "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall",
+        "HKLM:\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall",
+        "HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall"
+    )
+    foreach ($uk in $uninstallRegKeys) {
+        try {
+            if (Test-Path $uk) {
+                $subKeys = Get-ChildItem -Path $uk -ErrorAction SilentlyContinue
+                foreach ($sk in $subKeys) {
+                    $props = Get-ItemProperty -Path $sk.PSPath -ErrorAction SilentlyContinue
+                    if ($props) {
+                        $dName = $props.DisplayName
+                        $iLoc = $props.InstallLocation
+                        if ($dName -and ($dName -like "*AION*" -or $dName -like "*Purple*") -and $iLoc) {
+                            $cleanLoc = $iLoc.ToString().TrimEnd('\')
+                            if (Test-Path (Join-Path $cleanLoc 'Aion2\Content\Paks\L10N')) {
+                                if (-not ($detected | Where-Object { $_.Path.ToLower() -eq $cleanLoc.ToLower() })) {
+                                    $detected += [PSCustomObject]@{
+                                        Platform = "NCSoft PURPLE 国际服 (系统识别)"
+                                        Path     = $cleanLoc
+                                        Type     = "PURPLE"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        } catch {}
+    }
+
+    # 增强 3：全盘常见默认路径深度匹配池
     foreach ($d in $fixedDrives) {
         $purpleCandidates = @(
             (Join-Path $d 'AION 2'),
+            (Join-Path $d 'Aion2'),
             (Join-Path $d 'Games\AION 2'),
+            (Join-Path $d 'Games\Aion2'),
+            (Join-Path $d 'PurpleGames\AION 2'),
+            (Join-Path $d 'PurpleGames\Aion2'),
+            (Join-Path $d 'Purple\Games\AION 2'),
             (Join-Path $d 'NC\AION 2'),
-            (Join-Path $d 'Program Files (x86)\NC\AION 2'),
-            (Join-Path $d 'Program Files\NC\AION 2'),
-            (Join-Path $d 'NCSOFT\AION 2')
+            (Join-Path $d 'NCSOFT\AION 2'),
+            (Join-Path $d 'NCSOFT\Purple\Games\AION 2'),
+            (Join-Path $d 'Program Files\NCSOFT\Purple\AION 2'),
+            (Join-Path $d 'Program Files (x86)\NCSOFT\Purple\AION 2')
         )
         foreach ($pc in $purpleCandidates) {
             if (Test-Path (Join-Path $pc 'Aion2\Content\Paks\L10N')) {
                 if (-not ($detected | Where-Object { $_.Path.ToLower() -eq $pc.ToLower() })) {
                     $detected += [PSCustomObject]@{
-                        Platform = "NCSoft PURPLE 国际服"
+                        Platform = "NCSoft PURPLE 国际服 (磁盘扫描)"
                         Path     = $pc
                         Type     = "PURPLE"
                     }
@@ -516,7 +607,7 @@ if ($Install) {
 
         Write-Host "[3/4] 正在释放中文数据表 (L10NString.dat)..." -ForegroundColor Cyan
         New-Item -ItemType Directory -Path $enUsL10nDir -Force | Out-Null
-        Copy-Item (Join-Path $ZhDir "L10NString.dat") (Join-Path $enUsL10nDir "L10NString.dat") -Force
+        Copy-Item (Join-Path $ActiveSourceDir "L10NString.dat") (Join-Path $enUsL10nDir "L10NString.dat") -Force
 
         Write-Host "[4/4] 正在注入虚幻5回退机制 Stub..." -ForegroundColor Cyan
         $sigFiles = @(
@@ -533,17 +624,17 @@ if ($Install) {
                 }
             }
         }
-        Copy-Item (Join-Path $ZhDir "pakchunk502000-Windows_0_P.pak") (Join-Path $enUsPaksDir "pakchunk502000-Windows_0_P.pak") -Force
+        Copy-Item (Join-Path $ActiveSourceDir "pakchunk502000-Windows_0_P.pak") (Join-Path $enUsPaksDir "pakchunk502000-Windows_0_P.pak") -Force
         Write-Host "-> 该目录汉化部署完成！" -ForegroundColor Green
     }
 
     Write-Host ""
     Write-Host "========================================================================" -ForegroundColor Green
-    Write-Host ">>> 恭喜！AION 2 简体中文汉化全部安装成功 (共处理 $processedCount 个客户端)！" -ForegroundColor Green
+    Write-Host ">>> 恭喜！AION 2 $($LangName)汉化全部安装成功 (共处理 $processedCount 个客户端)！" -ForegroundColor Green
     Write-Host ">>> 【核心提示】游戏内语言请保持默认的英文（English），进游戏即可直接显示中文！" -ForegroundColor Yellow
     Write-Host ">>> 制作与维护：B站@吃素的佩奇 | 欢迎关注获取公测最新汉化！" -ForegroundColor Magenta
     Write-Host "========================================================================" -ForegroundColor Green
-    [System.Windows.Forms.MessageBox]::Show("AION 2 汉化补丁安装成功 (共处理 $processedCount 个客户端)！`n`n【提示】：游戏内语言保持默认英文（English）即可直接享受中文！`n`n制作：B站@吃素的佩奇`n欢迎关注获取最新汉化动态！", "汉化成功 - B站@吃素的佩奇", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Information)
+    [System.Windows.Forms.MessageBox]::Show("AION 2 $($LangName)补丁安装成功 (共处理 $processedCount 个客户端)！`n`n【提示】：游戏内语言保持默认英文（English）即可直接享受中文！`n`n制作：B站@吃素的佩奇`n欢迎关注获取最新汉化动态！", "汉化成功 - B站@吃素的佩奇", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Information)
 }
 elseif ($Restore) {
     Write-Host "[1/3] 正在全盘扫描检测 AION 2 游戏版本 (Steam / PURPLE)..." -ForegroundColor Cyan
