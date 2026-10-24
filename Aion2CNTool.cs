@@ -55,6 +55,9 @@ namespace Aion2CN {
         private string toolDir;
         private string zhDir;
         private string zhTwDir;
+        // 设计尺寸（96 DPI 基准），高分屏缩放时复用，避免两处硬编码失联
+        private const int DesignW = 760;
+        private const int DesignH = 725;
         private string currentVersion = "1.3.1";
         private string[] appIds = new string[] { "3393110", "4972320" };
 
@@ -69,7 +72,7 @@ namespace Aion2CN {
 
         private void InitializeComponent() {
             this.Text = "永恒之塔2 (AION 2) 国际服简繁一键汉化 v" + currentVersion + " - B站@吃素的佩奇";
-            this.Size = new Size(760, 725);
+            this.Size = new Size(DesignW, DesignH);
             this.StartPosition = FormStartPosition.CenterScreen;
             this.FormBorderStyle = FormBorderStyle.FixedSingle;
             this.MaximizeBox = false;
@@ -279,11 +282,39 @@ namespace Aion2CN {
                 AppendLog("==========================================================");
                 RunScan();
             };
+
+            // 高分屏适配：进程已声明系统 DPI 感知（见 app.manifest），字体随 DPI 自动缩放，
+            // 控件矩形与窗口在此按同一比例统一放大（AutoScaleMode 对纯代码窗体不可靠）。
+            // 注意：用桌面 DC 读 DPI，不提前创建窗口句柄，否则 CenterScreen 会按缩放前尺寸计算导致窗口偏移。
+            try {
+                float dpi;
+                using (Graphics g = Graphics.FromHwnd(IntPtr.Zero)) {
+                    dpi = g.DpiX / 96f;
+                }
+                if (dpi > 1f) {
+                    this.Scale(new SizeF(dpi, dpi));
+                    // Scale 对顶层窗体按客户区缩放，此处覆盖为 设计尺寸×DPI 的外框精确值，并限制不超出屏幕工作区
+                    Rectangle wa = Screen.PrimaryScreen.WorkingArea;
+                    this.Size = new Size(
+                        Math.Min((int)Math.Round(DesignW * dpi), wa.Width),
+                        Math.Min((int)Math.Round(DesignH * dpi), wa.Height));
+                }
+            } catch (Exception ex) {
+                AppendLog("【警告】DPI 缩放失败，界面可能偏小: " + ex.Message);
+            }
         }
 
         private void AppendLog(string msg) {
             string line = "[" + DateTime.Now.ToString("HH:mm:ss") + "] " + msg + "\r\n";
             txtLog.AppendText(line);
+        }
+
+        // ================= 客户端判定（精准排除台服） =================
+        // 国际服判定：L10N\Text 必须存在，且不得包含 zh-TW 语言目录。
+        // zh-TW 语言包是台服独有特征（国际服语言列表只有 de/en/es/fr/ja/ko/pt/ru，无中文），与安装路径无关
+        private static bool IsIntlRoot(string root) {
+            string text = Path.Combine(root, @"Aion2\Content\Paks\L10N\Text");
+            return Directory.Exists(text) && !Directory.Exists(Path.Combine(text, "zh-TW"));
         }
 
         // ================= 安全文件操作辅助方法（解决只读属性与文件锁占用） =================
@@ -349,8 +380,7 @@ namespace Aion2CN {
                 if (dlg.ShowDialog() == DialogResult.OK) {
                     string sel = dlg.SelectedPath.TrimEnd('\\', '/');
                     string checkExe = Path.Combine(sel, @"Aion2\Binaries\Win64\Aion2-Win64-Shipping.exe");
-                    string checkPak = Path.Combine(sel, @"Aion2\Content\Paks\L10N");
-                    if (File.Exists(checkExe) || Directory.Exists(checkPak)) {
+                    if (File.Exists(checkExe) || IsIntlRoot(sel)) {
                         foreach (var cur in detectedRoots) {
                             if (string.Equals(cur.Path.TrimEnd('\\', '/'), sel, StringComparison.OrdinalIgnoreCase)) {
                                 MessageBox.Show("该客户端路径已存在于列表中！", "已存在", MessageBoxButtons.OK, MessageBoxIcon.Information);
@@ -476,7 +506,7 @@ namespace Aion2CN {
                             var m = Regex.Match(content, "\"installdir\"\\s+\"([^\"]+)\"");
                             if (m.Success) {
                                 string gameDir = Path.Combine(Path.Combine(sa, "common"), m.Groups[1].Value);
-                                if (Directory.Exists(Path.Combine(gameDir, @"Aion2\Content\Paks\L10N"))) {
+                                if (IsIntlRoot(gameDir)) {
                                     string label = (aid == "3393110") ? "Steam 国际正式服" : "Steam 测试服";
                                     AddTargetIfNotExists(results, label, gameDir);
                                 }
@@ -489,7 +519,7 @@ namespace Aion2CN {
                 if (Directory.Exists(common)) {
                     try {
                         foreach (var dir in Directory.GetDirectories(common)) {
-                            if (Directory.Exists(Path.Combine(dir, @"Aion2\Content\Paks\L10N"))) {
+                            if (IsIntlRoot(dir)) {
                                 string dirName = Path.GetFileName(dir);
                                 AddTargetIfNotExists(results, "Steam 游戏库 (" + dirName + ")", dir);
                             }
@@ -527,7 +557,7 @@ namespace Aion2CN {
                     Path.Combine(r, @"Program Files (x86)\NCSOFT\Purple\AION 2")
                 };
                 foreach (var pc in purpleCandidates) {
-                    if (Directory.Exists(Path.Combine(pc, @"Aion2\Content\Paks\L10N"))) {
+                    if (IsIntlRoot(pc)) {
                         AddTargetIfNotExists(results, "NCSoft PURPLE 客户端 (磁盘扫描)", pc);
                     }
                 }
@@ -546,7 +576,7 @@ namespace Aion2CN {
                                     object baseDir = app.GetValue("BaseDir");
                                     if (baseDir != null) {
                                         string b = baseDir.ToString().TrimEnd('\\', '/');
-                                        if (Directory.Exists(Path.Combine(b, @"Aion2\Content\Paks\L10N"))) {
+                                        if (IsIntlRoot(b)) {
                                             AddTargetIfNotExists(results, "NCSoft PURPLE 客户端 (注册表定位)", b);
                                         }
                                     }
@@ -571,7 +601,7 @@ namespace Aion2CN {
                                         string n = name.ToString();
                                         string l = loc.ToString().TrimEnd('\\', '/');
                                         if ((n.IndexOf("AION", StringComparison.OrdinalIgnoreCase) >= 0 || n.IndexOf("Purple", StringComparison.OrdinalIgnoreCase) >= 0) &&
-                                            Directory.Exists(Path.Combine(l, @"Aion2\Content\Paks\L10N"))) {
+                                            IsIntlRoot(l)) {
                                             AddTargetIfNotExists(results, "NCSoft PURPLE 客户端 (系统卸载表)", l);
                                         }
                                     }
