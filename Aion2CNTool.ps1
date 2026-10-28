@@ -23,7 +23,7 @@ if ($Lang -eq 'zh-TW' -or $Lang -eq 'tw' -or $Lang -eq 'cht') {
     $ActiveSourceDir = $ZhTwDir
     $LangName = '繁体中文'
 }
-$CurrentVersion = '1.3.1'
+$CurrentVersion = '1.4.3'
 # 3393110 为 Steam 正式服 AppID，4972320 为 Steam Playtest 测试服 AppID
 $AppIds         = @('3393110', '4972320')
 $RemoteVersionUrl   = 'https://raw.githubusercontent.com/duoluoyuji/Aion2-Steam-CN/main/version.json'
@@ -33,6 +33,7 @@ $FallbackVersionUrl = 'https://ghp.ci/https://raw.githubusercontent.com/duoluoyu
 function Show-Banner {
     Write-Host "========================================================================" -ForegroundColor Magenta
     Write-Host "      AION 2 (Steam / PURPLE 正式版) 简繁双语一键汉化工具 v$CurrentVersion" -ForegroundColor Cyan
+    Write-Host "      制作团队: 吃素的佩奇汉化" -ForegroundColor Gray
     Write-Host "      开源主页: https://github.com/duoluoyuji/Aion2-Steam-CN" -ForegroundColor Gray
     Write-Host "      【声明】本工具完全免费分享，仅供交流学习，严禁倒卖牟利！" -ForegroundColor Red
     Write-Host "========================================================================" -ForegroundColor Magenta
@@ -461,10 +462,10 @@ function Show-Disclaimer {
     $form.Controls.SetChildIndex($body, 0)
 
     $items = @(
-        '1. 本工具会向游戏目录释放汉化数据文件，并备份原版英文语言包。',
+        '1. 本工具会向游戏目录释放汉化数据文件，并把官方日文语言包改名备份（.bak）。',
         '2. 任何客户端修改都可能违反游戏服务条款，相关风险由使用者自行承担。',
         '3. 执行过程中请勿启动游戏或中断任务，避免客户端文件损坏。',
-        '4. 本工具操作前会先自动备份原文件，可用「一键还原英文」随时恢复。'
+        '4. 本工具操作前会先自动备份原文件，可用「一键还原官方日文」随时恢复。'
     )
     $y = 12
     foreach ($it in $items) {
@@ -607,52 +608,50 @@ if ($Install) {
         Write-Host ">>> 正在处理目标游戏目录 [$processedCount/$($selectedRoots.Count)]: $gameRoot" -ForegroundColor Green
         Write-Host "========================================================================" -ForegroundColor DarkCyan
 
-        $backupDir   = Join-Path $gameRoot "Aion2_English_Backup_Safe"
-        $enUsL10nDir = Join-Path $gameRoot "Aion2\Content\L10N\Text\en-US"
-        $enUsPaksDir = Join-Path $gameRoot "Aion2\Content\Paks\L10N\Text\en-US"
+        $backupDir    = Join-Path $gameRoot "Aion2_Japanese_Backup_Safe"
+        $jaL10nDir    = Join-Path $gameRoot "Aion2\Content\L10N\Text\ja-JP"
+        $jaPaksDir    = Join-Path $gameRoot "Aion2\Content\Paks\L10N\Text\ja-JP"
+        $jaStartupDir = Join-Path $gameRoot "Aion2\Content\StartUpData\Table\L10N\ja-JP"
+        $stem = 'pakchunk503000-Windows_0_P'
+        $exts = @('pak', 'sig', 'ucas', 'utoc')
 
-        Write-Host "[2/4] 正在建立官方原版英文语言备份..." -ForegroundColor Cyan
+        Write-Host "[2/4] 正在建立官方原版日文语言备份..." -ForegroundColor Cyan
         if (-not (Test-Path $backupDir)) {
             New-Item -ItemType Directory -Path $backupDir -Force | Out-Null
-            $curPak = Join-Path $enUsPaksDir "pakchunk502000-Windows_0_P.pak"
-            if ((Test-Path $curPak) -and ((Get-Item $curPak).Length -gt 1000)) {
-                Copy-Item "$enUsPaksDir\*" $backupDir -Force
-                Write-Host "-> 官方原版英文文件已安全备份至: $backupDir" -ForegroundColor Green
-            }
-        } else {
-            Write-Host "-> 本地已存在安全备份，跳过覆盖。" -ForegroundColor Gray
-        }
-
-        Write-Host "[3/4] 正在释放中文数据表 (L10NString.dat)..." -ForegroundColor Cyan
-        New-Item -ItemType Directory -Path $enUsL10nDir -Force | Out-Null
-        Safe-CopyFile (Join-Path $ActiveSourceDir "L10NString.dat") (Join-Path $enUsL10nDir "L10NString.dat")
-
-        Write-Host "[4/4] 正在注入虚幻5回退机制 Stub..." -ForegroundColor Cyan
-        $sigFiles = @(
-            (Join-Path $enUsPaksDir "pakchunk502000-Windows_0_P.sig"),
-            (Join-Path $enUsPaksDir "pakchunk502000-Windows_0_P.ucas"),
-            (Join-Path $enUsPaksDir "pakchunk502000-Windows_0_P.utoc")
-        )
-        foreach ($sf in $sigFiles) {
-            if (Test-Path $sf) {
-                Clear-Content -Path $sf -Force -ErrorAction SilentlyContinue
-                Remove-Item $sf -Force -ErrorAction SilentlyContinue
-                if (Test-Path $sf) {
-                    [System.IO.File]::WriteAllBytes($sf, @()) 2>$null
+            foreach ($ext in $exts) {
+                $src = Join-Path $jaPaksDir "$stem.$ext"
+                if ((Test-Path $src) -and ((Get-Item $src).Length -gt 0)) {
+                    Copy-Item $src (Join-Path $backupDir "$stem.$ext.bak") -Force
                 }
             }
+            Write-Host "-> 官方原版日文文件已安全备份至: $backupDir" -ForegroundColor Green
+        } else {
+            Write-Host "-> 本地已存在日文原版备份，跳过覆盖。" -ForegroundColor Gray
         }
-        Safe-CopyFile (Join-Path $ActiveSourceDir "pakchunk502000-Windows_0_P.pak") (Join-Path $enUsPaksDir "pakchunk502000-Windows_0_P.pak")
+
+        Write-Host "[3/4] 正在释放中文数据表 (L10NString.dat，日文入口)..." -ForegroundColor Cyan
+        New-Item -ItemType Directory -Path $jaL10nDir -Force | Out-Null
+        Safe-CopyFile (Join-Path $ActiveSourceDir "L10NString.dat") (Join-Path $jaL10nDir "L10NString.dat")
+
+        Write-Host "[4/4] 正在隔离官方日文语言包 (清空 pak / 移除签名)..." -ForegroundColor Cyan
+        New-Item -ItemType Directory -Path $jaPaksDir -Force | Out-Null
+        foreach ($ext in @('sig', 'ucas', 'utoc')) {
+            $p = Join-Path $jaPaksDir "$stem.$ext"
+            if (Test-Path $p) { Remove-Item $p -Force -ErrorAction SilentlyContinue }
+        }
+        $pakPath = Join-Path $jaPaksDir "$stem.pak"
+        try { Set-ItemProperty -Path $pakPath -Name IsReadOnly -Value $false -ErrorAction SilentlyContinue } catch {}
+        [System.IO.File]::WriteAllBytes($pakPath, [byte[]]@())
         Write-Host "-> 该目录汉化部署完成！" -ForegroundColor Green
     }
 
     Write-Host ""
     Write-Host "========================================================================" -ForegroundColor Green
     Write-Host ">>> 恭喜！AION 2 $($LangName)汉化全部安装成功 (共处理 $processedCount 个客户端)！" -ForegroundColor Green
-    Write-Host ">>> 【核心提示】游戏内语言请保持默认的英文（English），进游戏即可直接显示中文！" -ForegroundColor Yellow
-    Write-Host ">>> 制作与维护：B站@吃素的佩奇 | 欢迎关注获取公测最新汉化！" -ForegroundColor Magenta
+    Write-Host ">>> 【核心提示】进入游戏后，请在设置中把「文字语言」设为【日本語】，重启客户端即可显示中文！" -ForegroundColor Yellow
+    Write-Host ">>> 制作团队：吃素的佩奇汉化 | 欢迎关注获取公测最新汉化！" -ForegroundColor Magenta
     Write-Host "========================================================================" -ForegroundColor Green
-    [System.Windows.Forms.MessageBox]::Show("AION 2 $($LangName)补丁安装成功 (共处理 $processedCount 个客户端)！`n`n【提示】：游戏内语言保持默认英文（English）即可直接享受中文！`n`n制作：B站@吃素的佩奇`n欢迎关注获取最新汉化动态！", "汉化成功 - B站@吃素的佩奇", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Information)
+    [System.Windows.Forms.MessageBox]::Show("AION 2 $($LangName)补丁安装成功 (共处理 $processedCount 个客户端)！`n`n【核心提示】：进入游戏后，请把「文字语言」设为【日本語】，重启客户端即可显示中文！`n`n制作团队：吃素的佩奇汉化`n欢迎关注获取最新汉化动态！", "汉化成功 - 吃素的佩奇汉化", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Information)
 }
 elseif ($Restore) {
     Write-Host "[1/3] 正在全盘扫描检测 AION 2 游戏版本 (Steam / PURPLE)..." -ForegroundColor Cyan
@@ -667,7 +666,7 @@ elseif ($Restore) {
             Start-Sleep -Milliseconds 600
         }
     }
-    $selectedRoots = @(Select-TargetGameRoots -ActionName "还原英文")
+    $selectedRoots = @(Select-TargetGameRoots -ActionName "还原日文")
     if ($selectedRoots.Count -eq 0) {
         Write-Host "未选择有效游戏目录，操作已终止。" -ForegroundColor Red
         exit 1
@@ -681,19 +680,44 @@ elseif ($Restore) {
         Write-Host ">>> 正在还原目标游戏目录 [$processedCount/$($selectedRoots.Count)]: $gameRoot" -ForegroundColor Green
         Write-Host "========================================================================" -ForegroundColor DarkCyan
 
-        $backupDir   = Join-Path $gameRoot "Aion2_English_Backup_Safe"
-        $enUsPaksDir = Join-Path $gameRoot "Aion2\Content\Paks\L10N\Text\en-US"
+        $backupDir = Join-Path $gameRoot "Aion2_Japanese_Backup_Safe"
+        $jaL10nDir = Join-Path $gameRoot "Aion2\Content\L10N\Text\ja-JP"
+        $jaPaksDir = Join-Path $gameRoot "Aion2\Content\Paks\L10N\Text\ja-JP"
+        $jaStartupDir = Join-Path $gameRoot "Aion2\Content\StartUpData\Table\L10N\ja-JP"
+        $stem = 'pakchunk503000-Windows_0_P'
+        $exts = @('pak', 'sig', 'ucas', 'utoc')
 
         Write-Host "[2/3] 清理汉化数据表..." -ForegroundColor Cyan
-        $l10nRoot = Join-Path $gameRoot "Aion2\Content\L10N"
-        if (Test-Path $l10nRoot) {
-            Safe-RemoveDirectory $l10nRoot
-        }
+        $looseDat = Join-Path $jaL10nDir "L10NString.dat"
+        if (Test-Path $looseDat) { Remove-Item $looseDat -Force -ErrorAction SilentlyContinue }
+        $startupDat = Join-Path $jaStartupDir "L10NString.dat"
+        if (Test-Path $startupDat) { Remove-Item $startupDat -Force -ErrorAction SilentlyContinue }
 
-        Write-Host "[3/3] 还原官方原版英文语言包..." -ForegroundColor Cyan
+        Write-Host "[3/3] 还原官方原版日文语言包..." -ForegroundColor Cyan
+        $restored = $false
+        New-Item -ItemType Directory -Path $jaPaksDir -Force | Out-Null
         if (Test-Path $backupDir) {
-            Copy-Item "$backupDir\*" $enUsPaksDir -Force
-            Write-Host "-> 还原成功！已完整恢复官方原版英文状态。" -ForegroundColor Green
+            foreach ($ext in $exts) {
+                $bak = Join-Path $backupDir "$stem.$ext.bak"
+                $dst = Join-Path $jaPaksDir "$stem.$ext"
+                if (Test-Path $bak) {
+                    Safe-CopyFile $bak $dst
+                    $restored = $true
+                }
+            }
+        }
+        # 清理目录里可能残留的改名备份，避免被客户端当作资源扫描
+        Get-ChildItem $jaPaksDir -File -Filter "$stem.*.bak" -ErrorAction SilentlyContinue | ForEach-Object {
+            Remove-Item $_.FullName -Force -ErrorAction SilentlyContinue
+        }
+        if (-not $restored) {
+            $pakPath = Join-Path $jaPaksDir "$stem.pak"
+            if ((Test-Path $pakPath) -and ((Get-Item $pakPath).Length -eq 0)) {
+                Remove-Item $pakPath -Force -ErrorAction SilentlyContinue
+            }
+        }
+        if ($restored) {
+            Write-Host "-> 还原成功！已完整恢复官方原版日文状态。" -ForegroundColor Green
         } else {
             Write-Host "-> 未检测到本地备份，已为您清理汉化数据，建议检验文件完整性。" -ForegroundColor Yellow
         }
@@ -703,5 +727,5 @@ elseif ($Restore) {
     Write-Host "========================================================================" -ForegroundColor Green
     Write-Host ">>> 全部还原操作已完成 (共恢复 $processedCount 个客户端)！" -ForegroundColor Green
     Write-Host "========================================================================" -ForegroundColor Green
-    [System.Windows.Forms.MessageBox]::Show("已成功还原为官方原版英文客户端 (共恢复 $processedCount 个版本)！`n`n制作：B站@吃素的佩奇", "还原成功", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Information)
+    [System.Windows.Forms.MessageBox]::Show("已成功还原为官方原版日文客户端 (共恢复 $processedCount 个版本)！`n`n制作团队：吃素的佩奇汉化", "还原成功", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Information)
 }

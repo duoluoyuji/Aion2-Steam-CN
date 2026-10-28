@@ -18,8 +18,8 @@ using Microsoft.Win32;
 [assembly: AssemblyCopyright("Copyright © 2026 B站@吃素的佩奇")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
-[assembly: AssemblyVersion("1.3.1.0")]
-[assembly: AssemblyFileVersion("1.3.1.0")]
+[assembly: AssemblyVersion("1.4.3.0")]
+[assembly: AssemblyFileVersion("1.4.3.0")]
 
 namespace Aion2CN {
     public class ClientTarget {
@@ -55,7 +55,7 @@ namespace Aion2CN {
         private string toolDir;
         private string zhDir;
         private string zhTwDir;
-        private string currentVersion = "1.3.1";
+        private string currentVersion = "1.4.3";
         private string[] appIds = new string[] { "3393110", "4972320" };
 
         public MainForm() {
@@ -233,7 +233,7 @@ namespace Aion2CN {
 
             // 一键还原官方默认英文：永远可用（Enabled = true，无需勾选协议！），醒目鲜红色
             btnRestore = new Button();
-            btnRestore.Text = "一键还原官方默认英文";
+            btnRestore.Text = "一键还原官方默认日文";
             btnRestore.Location = new Point(475, 100);
             btnRestore.Size = new Size(215, 60);
             btnRestore.BackColor = Color.FromArgb(220, 38, 38);
@@ -591,15 +591,17 @@ namespace Aion2CN {
             }
 
             string datFile = Path.Combine(sourceDir, "L10NString.dat");
-            string pakFile = Path.Combine(sourceDir, "pakchunk502000-Windows_0_P.pak");
 
-            if (!File.Exists(datFile) || !File.Exists(pakFile)) {
+            if (!File.Exists(datFile)) {
                 AppendLog("【错误】未找到汉化数据文件: " + sourceDir);
-                MessageBox.Show("未在 [" + sourceDir + "] 找到汉化数据文件 (L10NString.dat 或 pakchunk502000-Windows_0_P.pak)！\n请确保汉化工具与 zh / zh-TW 文件夹放在同一目录下！", "缺失数据文件", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show("未在 [" + sourceDir + "] 找到汉化数据文件 (L10NString.dat)！\n请确保汉化工具与 zh / zh-TW 文件夹放在同一目录下！", "缺失数据文件", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 return;
             }
 
             ReleaseFileLocks();
+
+            string stem = "pakchunk503000-Windows_0_P";
+            string[] exts = new string[] { "pak", "sig", "ucas", "utoc" };
 
             int count = 0;
             try {
@@ -609,50 +611,51 @@ namespace Aion2CN {
                     AppendLog("==========================================================");
                     AppendLog(">>> 正在处理目标客户端 [" + count + "/" + targets.Count + "]: " + root);
 
-                    string backupDir   = Path.Combine(root, "Aion2_English_Backup_Safe");
-                    string enUsL10nDir = Path.Combine(root, @"Aion2\Content\L10N\Text\en-US");
-                    string enUsPaksDir = Path.Combine(root, @"Aion2\Content\Paks\L10N\Text\en-US");
+                    string backupDir    = Path.Combine(root, "Aion2_Japanese_Backup_Safe");
+                    string jaL10nDir    = Path.Combine(root, @"Aion2\Content\L10N\Text\ja-JP");
+                    string jaPaksDir    = Path.Combine(root, @"Aion2\Content\Paks\L10N\Text\ja-JP");
+                    string jaStartupDir = Path.Combine(root, @"Aion2\Content\StartUpData\Table\L10N\ja-JP");
 
-                    // 备份
+                    // 备份官方日文语言包（pak 家族 4 个文件）
                     if (!Directory.Exists(backupDir)) {
-                        AppendLog("-> 正在创建官方原版英文安全备份...");
+                        AppendLog("-> 正在创建官方原版日文资源安全备份...");
                         Directory.CreateDirectory(backupDir);
-                        string curPak = Path.Combine(enUsPaksDir, "pakchunk502000-Windows_0_P.pak");
-                        if (File.Exists(curPak) && new FileInfo(curPak).Length > 1000) {
-                            foreach (string file in Directory.GetFiles(enUsPaksDir)) {
-                                SafeCopyFile(file, Path.Combine(backupDir, Path.GetFileName(file)));
+                        foreach (string ext in exts) {
+                            string src = Path.Combine(jaPaksDir, stem + "." + ext);
+                            if (File.Exists(src) && new FileInfo(src).Length > 0) {
+                                SafeCopyFile(src, Path.Combine(backupDir, stem + "." + ext + ".bak"));
                             }
-                            AppendLog("-> 官方原版英文文件已安全备份至: " + backupDir);
                         }
+                        AppendLog("-> 官方原版日文文件已安全备份至: " + backupDir);
                     } else {
-                        AppendLog("-> 本地已存在安全备份，跳过覆盖。");
+                        AppendLog("-> 本地已存在日文原版备份，跳过覆盖。");
                     }
 
-                    // 释放 L10NString.dat
-                    AppendLog("-> 正在部署 " + langTitle + " 数据表...");
-                    Directory.CreateDirectory(enUsL10nDir);
-                    SafeCopyFile(datFile, Path.Combine(enUsL10nDir, "L10NString.dat"));
+                    // 释放中文数据表（日文入口容器）
+                    AppendLog("-> 正在部署 " + langTitle + " 数据表 (日文入口)...");
+                    Directory.CreateDirectory(jaL10nDir);
+                    SafeCopyFile(datFile, Path.Combine(jaL10nDir, "L10NString.dat"));
 
-                    // 注入虚幻5回退机制 Stub pak
-                    AppendLog("-> 正在注入虚幻5引擎本地化回退机制 (Stub)...");
-                    string sig  = Path.Combine(enUsPaksDir, "pakchunk502000-Windows_0_P.sig");
-                    string ucas = Path.Combine(enUsPaksDir, "pakchunk502000-Windows_0_P.ucas");
-                    string utoc = Path.Combine(enUsPaksDir, "pakchunk502000-Windows_0_P.utoc");
-                    SafeDeleteFile(sig);
-                    SafeDeleteFile(ucas);
-                    SafeDeleteFile(utoc);
-
-                    Directory.CreateDirectory(enUsPaksDir);
-                    SafeCopyFile(pakFile, Path.Combine(enUsPaksDir, "pakchunk502000-Windows_0_P.pak"));
+                    // 隔离官方日文 pak：清空 pak 并移除签名，让客户端回退读松散数据表
+                    AppendLog("-> 正在隔离官方日文语言包 (清空 pak / 移除签名)...");
+                    Directory.CreateDirectory(jaPaksDir);
+                    foreach (string ext in new string[] { "sig", "ucas", "utoc" }) {
+                        SafeDeleteFile(Path.Combine(jaPaksDir, stem + "." + ext));
+                    }
+                    string pakPath = Path.Combine(jaPaksDir, stem + ".pak");
+                    if (File.Exists(pakPath)) {
+                        try { File.SetAttributes(pakPath, FileAttributes.Normal); } catch {}
+                    }
+                    File.WriteAllBytes(pakPath, new byte[0]);
                     AppendLog("-> 该客户端 " + langTitle + " 汉化部署完成！");
                 }
 
                 AppendLog("==========================================================");
                 AppendLog("恭喜！已全部成功应用 " + langTitle + " (共处理 " + count + " 个客户端)！");
-                AppendLog("【核心提示】游戏内语言请保持默认英文（English），进入游戏即可直接显示中文！");
+                AppendLog("【核心提示】进入游戏后，把「文字语言」设置为【日本語】，重启客户端即可显示中文！");
                 AppendLog("==========================================================");
 
-                MessageBox.Show("AION 2 " + langTitle + "汉化补丁安装成功 (共处理 " + count + " 个客户端)！\n\n【提示】：游戏内语言保持默认英文（English）即可直接享受中文！\n\n制作：B站@吃素的佩奇\n欢迎关注获取最新补丁与动态！", "汉化成功 - B站@吃素的佩奇", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                MessageBox.Show("AION 2 " + langTitle + "汉化补丁安装成功 (共处理 " + count + " 个客户端)！\n\n【核心提示】进入游戏后，请在设置中把「文字语言」设为【日本語】，然后重启客户端，即可显示中文！\n\n制作团队：吃素的佩奇汉化\n欢迎关注获取最新补丁与动态！", "汉化成功 - 吃素的佩奇汉化", MessageBoxButtons.OK, MessageBoxIcon.Information);
             } catch (Exception ex) {
                 AppendLog("【错误】文件写入失败: " + ex.Message);
                 MessageBox.Show("汉化部署失败！\n\n【可能原因与解决办法】：\n1. 游戏或紫色 PURPLE 客户端仍在后台运行（文件被占用）：请打开任务管理器结束相关进程后重试；\n2. 文件夹被设置了只读属性或权限不足：请右键【以管理员身份运行】本工具；\n3. 杀毒软件（360/火绒/Defender）拦截了游戏文件修改。\n\n详细系统报错：" + ex.Message, "写入受阻", MessageBoxButtons.OK, MessageBoxIcon.Error);
@@ -668,6 +671,9 @@ namespace Aion2CN {
 
             ReleaseFileLocks();
 
+            string stem = "pakchunk503000-Windows_0_P";
+            string[] exts = new string[] { "pak", "sig", "ucas", "utoc" };
+
             int count = 0;
             try {
                 for (int i = 0; i < targets.Count; i++) {
@@ -676,33 +682,52 @@ namespace Aion2CN {
                     AppendLog("==========================================================");
                     AppendLog(">>> 正在还原目标客户端 [" + count + "/" + targets.Count + "]: " + root);
 
-                    string backupDir   = Path.Combine(root, "Aion2_English_Backup_Safe");
-                    string enUsL10nDir = Path.Combine(root, @"Aion2\Content\L10N\Text\en-US");
-                    string enUsPaksDir = Path.Combine(root, @"Aion2\Content\Paks\L10N\Text\en-US");
+                    string backupDir    = Path.Combine(root, "Aion2_Japanese_Backup_Safe");
+                    string jaL10nDir    = Path.Combine(root, @"Aion2\Content\L10N\Text\ja-JP");
+                    string jaPaksDir    = Path.Combine(root, @"Aion2\Content\Paks\L10N\Text\ja-JP");
+                    string jaStartupDir = Path.Combine(root, @"Aion2\Content\StartUpData\Table\L10N\ja-JP");
 
-                    // 删除外置数据
-                    string looseDat = Path.Combine(enUsL10nDir, "L10NString.dat");
-                    SafeDeleteFile(looseDat);
+                    // 删除外置汉化数据
+                    SafeDeleteFile(Path.Combine(jaL10nDir, "L10NString.dat"));
+                    SafeDeleteFile(Path.Combine(jaStartupDir, "L10NString.dat"));
                     AppendLog("-> 已成功移除外置汉化数据表。");
 
-                    // 还原备份
+                    // 还原官方日文 pak 家族
+                    bool restored = false;
+                    Directory.CreateDirectory(jaPaksDir);
                     if (Directory.Exists(backupDir)) {
-                        AppendLog("-> 正在从安全备份中还原官方原版英文包与签名...");
-                        Directory.CreateDirectory(enUsPaksDir);
-                        foreach (string file in Directory.GetFiles(backupDir)) {
-                            SafeCopyFile(file, Path.Combine(enUsPaksDir, Path.GetFileName(file)));
+                        AppendLog("-> 正在从安全备份中还原官方原版日文语言包...");
+                        foreach (string ext in exts) {
+                            string bak = Path.Combine(backupDir, stem + "." + ext + ".bak");
+                            string dst = Path.Combine(jaPaksDir, stem + "." + ext);
+                            if (File.Exists(bak)) {
+                                SafeCopyFile(bak, dst);
+                                restored = true;
+                            }
                         }
-                        AppendLog("-> 已成功恢复为官方原版英文状态！");
+                    }
+                    // 清理目录里可能残留的改名备份
+                    foreach (string f in Directory.GetFiles(jaPaksDir, stem + ".*.bak")) {
+                        SafeDeleteFile(f);
+                    }
+                    if (!restored) {
+                        string pakPath = Path.Combine(jaPaksDir, stem + ".pak");
+                        if (File.Exists(pakPath) && new FileInfo(pakPath).Length == 0) {
+                            SafeDeleteFile(pakPath);
+                        }
+                    }
+                    if (restored) {
+                        AppendLog("-> 已成功恢复为官方原版日文状态！");
                     } else {
-                        AppendLog("-> 未检测到本地安全备份，如果游戏文件缺失，请在 Steam/PURPLE 中验证游戏完整性。");
+                        AppendLog("-> 未检测到本地备份，如果游戏文件缺失，请在 Steam/PURPLE 中验证游戏完整性。");
                     }
                 }
 
                 AppendLog("==========================================================");
-                AppendLog("官方原版英文还原完成 (共处理 " + count + " 个客户端)！");
+                AppendLog("官方原版日文还原完成 (共处理 " + count + " 个客户端)！");
                 AppendLog("==========================================================");
 
-                MessageBox.Show("AION 2 官方原版英文已成功还原 (共处理 " + count + " 个客户端)！\n\n游戏客户端已完全恢复为纯净官方原版状态。\n随时可重新运行一键汉化！\n\n制作：B站@吃素的佩奇", "还原成功 - B站@吃素的佩奇", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                MessageBox.Show("AION 2 官方原版日文已成功还原 (共处理 " + count + " 个客户端)！\n\n游戏客户端已完全恢复为纯净官方原版状态。\n随时可重新运行一键汉化！\n\n制作团队：吃素的佩奇汉化", "还原成功 - 吃素的佩奇汉化", MessageBoxButtons.OK, MessageBoxIcon.Information);
             } catch (Exception ex) {
                 AppendLog("【错误】还原文件失败: " + ex.Message);
                 MessageBox.Show("还原失败！\n\n【可能原因与解决办法】：\n1. 游戏或启动器仍在后台运行：请彻底退出后再重试；\n2. 权限不足：请右键【以管理员身份运行】本工具。\n\n详细系统报错：" + ex.Message, "还原受阻", MessageBoxButtons.OK, MessageBoxIcon.Error);
