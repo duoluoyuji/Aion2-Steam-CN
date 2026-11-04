@@ -40,5 +40,5 @@
 
 ## 致谢与来源
 
-- 日文入口机制（清空 ja 语言 pak、移除 sig/ucas/utoc、改用外置 `L10NString.dat`）参考社区项目 [Foohi666/Aion2-CN-Foohi](https://github.com/Foohi666/Aion2-CN-Foohi) 的实践。
+- 日文入口机制参考社区项目 [Foohi666/Aion2-CN-Foohi](https://github.com/Foohi666/Aion2-CN-Foohi) 的实践。
 - v1.4.2 测试版曾使用该项目的语言数据包。
