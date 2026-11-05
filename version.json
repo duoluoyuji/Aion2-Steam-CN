@@ -1,8 +1,1 @@
-﻿{
-    "version":  "1.5.7",
-    "latest_version":  "1.5.7",
-    "release_date":  "2026-11-06",
-    "title":  "v1.5.7",
-    "announcement":  "全量简繁汉化：153,419 条中已汉化 152,797 条（99.6%），主界面、服务器列表、任务、物品、技能、称号、成就与 NPC 对话等可见内容基本全部替换为中文。已修复客户端状态误判：不再使用固定哈希，改为以本机官方备份为基准；检测到旧版汉化或其他修改时会弹窗询问，确认后才还原并继续，未找到备份时会提示校验完整性。安装后请把游戏内「文字语言」设为 日本語。",
-    "download_url":  "https://github.com/duoluoyuji/Aion2-Steam-CN/releases/latest"
-}
+{"version":"1.5.8","latest_version":"1.5.8","release_date":"2026-11-06","title":"v1.5.8","announcement":"v1.5.8 已发布：修复 1.5.7 中“需要还原 / 其他版本”的误报，不再要求还原，直接安装即可；复制文件后会自动校验完整性。请到 Releases 下载最新包。","download_url":"https://github.com/duoluoyuji/Aion2-Steam-CN/releases/latest"}
