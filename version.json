@@ -1,8 +1,8 @@
 {
-  "version": "1.4.3",
-  "latest_version": "1.4.3",
-  "release_date": "2026-10-29",
-  "title": "v1.4.3 (适配 10-28 更新 · 日文入口)",
-  "announcement": "适配 2026-10-28 客户端（Steam build 26262663）：改用日文入口方案，绕过新增的 pak 签名校验；译文按官方日文表逐条校对与补译（修正 423 条数值、按官方重译 1,174 条占位符条目）。安装后请把游戏内文字语言设为「日本語」。",
+  "version": "1.5.6",
+  "latest_version": "1.5.6",
+  "release_date": "2026-11-05",
+  "title": "v1.5.6",
+  "announcement": "日文入口部分汉化更新：主界面、菜单、任务、物品、技能、地名等日常内容显示为中文，少量长对话与系统提示仍为日文。安装前自动备份官方原版，可一键还原。支持 Steam 与紫P 客户端，也可手动指定游戏目录。",
   "download_url": "https://github.com/duoluoyuji/Aion2-Steam-CN/releases/latest"
 }
