@@ -1,5 +1,9 @@
 # Aion2-Steam-CN（永恒之塔2 国际服一键简繁汉化）
 
+> ⚠️ **下载请点右侧 [Releases](https://github.com/duoluoyuji/Aion2-Steam-CN/releases)，不要下载「Source code」源码包。**
+> 源码包里没有汉化数据与打包好的程序，点开旧版 bat 会提示「找不到目标文件」。
+> 下载 Release 的 zip 后请**完整解压到文件夹**，不要在压缩软件里直接双击运行。
+
 专为 **AION 2（永恒之塔2）国际服（Steam / PURPLE）** 打造的一键简体 / 繁体中文汉化与还原工具。
 
 - **支持平台**：Steam 国际正式版 / NCSoft PURPLE 国际服
