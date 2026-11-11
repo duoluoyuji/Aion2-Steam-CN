@@ -1,1 +1,1 @@
-{"version":"1.5.8","latest_version":"1.5.8","release_date":"2026-11-06","title":"v1.5.8","announcement":"v1.5.8 已发布：修复 1.5.7 中“需要还原 / 其他版本”的误报，不再要求还原，直接安装即可；复制文件后会自动校验完整性。请到 Releases 下载最新包。","download_url":"https://github.com/duoluoyuji/Aion2-Steam-CN/releases/latest"}
+{"version":"1.6.0","latest_version":"1.6.0","release_date":"2026-11-11","title":"v1.6.0","announcement":"v1.6.0 已发布：适配 11 月 11 日游戏更新，全量 153,008 条文本，简繁均已重新制作；本次新增的 89 条内容（新皮肤/新成就）已同步汉化。请到 Releases 下载最新包。","download_url":"https://github.com/duoluoyuji/Aion2-Steam-CN/releases/latest"}
